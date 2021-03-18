@@ -96,7 +96,7 @@ def sd2drf(local_dir,remote_dir,filetype='png',keepfolder=False):
             #drflist.append(drifterlist[i].replace(remote_dir,local_dir))
             drflist.append(drifterlist[i].replace(remote_dir,local_dir).replace('/','\\'))
         upflist=list(set(files)-set(drflist))
-        print(len(upflist))
+        #print(len(upflist))
         ftp.quit()
         if len(upflist)==0:
             return 0
@@ -172,8 +172,8 @@ def classify_by_boat(indir,outdir,pstatus):
     #classify the file        
     for file in file_lists:
         #time conversion, GMT time to local time
-        #time_str=file.split('/')[len(file.split('/'))-1:][0].split('.')[0].split('_')[2]+' '+file.split('/')[len(file.split('/'))-1:][0].split('.')[0].split('_')[3]
-        time_str=file.split('\\')[len(file.split('\\'))-1:][0].split('.')[0].split('_')[2]+' '+file.split('\\')[len(file.split('\\'))-1:][0].split('.')[0].split('_')[3]
+        time_str=file.split('/')[len(file.split('/'))-1:][0].split('.')[0].split('_')[2]+' '+file.split('/')[len(file.split('/'))-1:][0].split('.')[0].split('_')[3]
+        #time_str=file.split('\\')[len(file.split('\\'))-1:][0].split('.')[0].split('_')[2]+' '+file.split('\\')[len(file.split('\\'))-1:][0].split('.')[0].split('_')[3]
         time_local=zl.gmt_to_eastern(time_str[0:4]+'-'+time_str[4:6]+'-'+time_str[6:8]+' '+time_str[9:11]+':'+time_str[11:13]+':'+time_str[13:15]).strftime("%Y%m%d")
         #match the SN and date
         for i in range(len(df)):
@@ -181,16 +181,16 @@ def classify_by_boat(indir,outdir,pstatus):
                 continue
             else:
                 for j in range(len(df['Lowell-SN'][i].split(','))):   
-                    #fname_len_SN=len(file.split('/')[len(file.split('/'))-1:][0].split('_')[1]) #the length of SN in the file name
-                    fname_len_SN=len(file.split('\\')[len(file.split('\\'))-1:][0].split('_')[1])
+                    fname_len_SN=len(file.split('/')[len(file.split('/'))-1:][0].split('_')[1]) #the length of SN in the file name
+                    #fname_len_SN=len(file.split('\\')[len(file.split('\\'))-1:][0].split('_')[1])
                     len_SN=len(df['Lowell-SN'][i].split(',')[j]) #the length of SN in the culumn of the Lowell-SN inthe file of the telemetry_status.csv
-                    if df['Lowell-SN'][i].split(',')[j][len_SN-fname_len_SN:]==file.split('\\')[len(file.split('\\'))-1:][0].split('_')[1]:
-                    #if df['Lowell-SN'][i].split(',')[j][len_SN-fname_len_SN:]==file.split('/')[len(file.split('/'))-1:][0].split('_')[1]:
+                    #if df['Lowell-SN'][i].split(',')[j][len_SN-fname_len_SN:]==file.split('\\')[len(file.split('\\'))-1:][0].split('_')[1]:
+                    if df['Lowell-SN'][i].split(',')[j][len_SN-fname_len_SN:]==file.split('/')[len(file.split('/'))-1:][0].split('_')[1]:
                         fpath,fname=os.path.split(file)    #seperate the path and name of the file
-                        #dstfile=(fpath).replace(indir,outdir+'/'+df['Boat'][i]+'/'+fname.split('_')[2][:6]+'/'+fname) #produce the path+filename of the destination
-                        dstfile=(fpath).replace(indir,outdir+'\\'+df['Boat'][i]+'\\'+fname.split('_')[2][:6]+'\\'+fname)
-                        #dstfile=dstfile.replace('//','/').replace(' ','_')
-                        dstfile=dstfile.replace('//','\\').replace(' ','_')
+                        dstfile=(fpath).replace(indir,outdir+'/'+df['Boat'][i]+'/'+fname.split('_')[2][:6]+'/'+fname) #produce the path+filename of the destination
+                        #dstfile=(fpath).replace(indir,outdir+'\\'+df['Boat'][i]+'\\'+fname.split('_')[2][:6]+'\\'+fname)
+                        dstfile=dstfile.replace('//','/').replace(' ','_')
+                        #dstfile=dstfile.replace('//','\\').replace(' ','_')
                         
                         try:#copy the file to the destination folder
                             if j<len(df['logger_change'][i])-1:
@@ -235,7 +235,9 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
     """
     #Read telemetry status file and raw data name file
     telemetrystatus_df=rdm.read_telemetrystatus(pstatus)
-    raw_data_name_df=pd.read_csv(rdnf,sep='\t') 
+    #raw_data_name_df=pd.read_csv(rdnf,sep='\t') 
+    raw_data_name_df=pd.read_csv(rdnf,sep='\t')
+    print ()
     #produce a dataframe that use to calculate the number of files
     total_df=pd.concat([telemetrystatus_df.loc[:,['Boat']][:],pd.DataFrame(data=[['Total']],columns=['Boat'])],ignore_index=True)
     total_df.insert(1,'file_total',0)
@@ -255,8 +257,8 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
     for file in file_lists:
         fpath,fname=os.path.split(file)  #get the file's path and name
         #fix the file name
-        #fname=file.split('/')[len(file.split('/'))-1]
-        fname=file.split('\\')[len(file.split('\\'))-1]
+        fname=file.split('/')[len(file.split('/'))-1]
+        #fname=file.split('\\')[len(file.split('\\'))-1]
         if len(fname.split('_')[1])==2:# if the serieal number is only 2 digits make it 4
             new_fname=fname[:3]+LSN2+fname[3:]
         else:
@@ -270,8 +272,8 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
         except:
             print("worthless file:"+file)
             continue
-        #vessel_name=fpath.split('/')[-2:-1][0] #get the vessel name
-        vessel_name=fpath.split('\\')[-2:-1][0]
+        vessel_name=fpath.split('/')[-2:-1][0] #get the vessel name
+        #vessel_name=fpath.split('\\')[-2:-1][0]
         #check the format of the data
         if len(df.iloc[0])==5: # some files absent the "DATA" in the first column
             df.insert(0,'HEADING','DATA')
@@ -373,18 +375,22 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
         output_path=fpath.replace(indir,outdir)
         if not os.path.exists(output_path):   #check the path of the save file is exist,make it if not
             os.makedirs(output_path)
-        #df_head.to_csv(output_path+'/'+new_fname,index=0,header=0)
-        df_head.to_csv(output_path+'\\'+new_fname,index=0,header=0)
-        df.to_csv(output_path+'\\df_tem.csv',index=0)  #produce the temperature file  
+        df_head.to_csv(output_path+'/'+new_fname,index=0,header=0)
+        #df_head.to_csv(output_path+'\\'+new_fname,index=0,header=0)
+        df.to_csv(output_path+'/df_tem.csv',index=0)  #produce the temperature file  
         #add the two file in one file and delet the temperature file
         #os.system('cat '+output_path+'\\df_tem.csv'+' >> '+output_path+'\\'+new_fname)
-        os.system('type '+output_path+'\\df_tem.csv'+' >> '+output_path+'\\'+new_fname)
-        os.remove(output_path+'\\df_tem.csv')
+        
+        #os.system('type '+output_path+'\\df_tem.csv'+' >> '+output_path+'\\'+new_fname)
+        #os.system('type '+output_path+'/df_tem.csv'+' >> '+output_path+'/'+new_fname)
+        #print('11111111111111111111111111111111111111111111111111111111111111111')
+        os.remove(output_path+'/df_tem.csv')
 #    #caculate the total of all files and print save as a file.
     try:
         for i in range(len(total_df)-1):
             total_df['file_total'][len(total_df)-1]=total_df['file_total'][len(total_df)-1]+total_df['file_total'][i]
-        total_df.to_csv(outdir+'\\items_number.txt',index=0)
+        #total_df.to_csv(outdir+'\\items_number.txt',index=0)
+        total_df.to_csv(outdir+'/items_number.txt',index=0)
     except KeyboardInterrupt:
         sys.exit()
     except:
@@ -393,13 +399,15 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
 def main():
     # realpath=os.path.dirname(os.path.abspath(__file__))
     realpath='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\py'
+    realpath='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/py'
     parameterpath=realpath.replace('py','parameter')
     #HARDCODING
     raw_data_name_file=os.path.join(parameterpath,'raw_data_name.txt')  #this data conclude the VP_NUM HULL_NUM VESSEL_NAME
+    print (raw_data_name_file)
     #raw_data_name_file='E:/programe/raw_data_match/parameter/raw_data_name.txt'
     output_path=realpath.replace('py','result')  #use to save the data 
     #telemetry_status=os.path.join(parameterpath,'telemetry_status.csv')
-    telemetry_status='C:\\Weekly_Project\\Weekly_Project\\programe\\aqmain\\parameter\\telemetry_status.csv'
+    telemetry_status='/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv'
     lack_data_path=os.path.join(output_path, 'lack_data.txt')
     #lack_data_path='E:/programe/raw_data_match/result/lack_data.txt'#store the name of file that lacked data after 'classfy finished'
     # below hardcodes is the informations to upload local data to student drifter. 
@@ -412,13 +420,15 @@ def main():
     #start_time,end_time=week_start_end(end_time,interval=1)
     start_time=end_time-timedelta(weeks=2)
     #download raw data from website
-    files=ftpdownload.download(localpath='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata', ftppath='/Matdata')
+    #files=ftpdownload.download(localpath='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata', ftppath='/Matdata')
+    
     #classify the file by every boats
     #rdm.classify_by_boat(indir='E:\\programe\\raw_data_match\\result\\Matdata',outdir='E:\\programe\\raw_data_match\\result\\classified',pstatus=telemetry_status)
-    classify_by_boat(indir='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata',outdir=r'C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\classified',pstatus=telemetry_status)
+    #classify_by_boat(indir='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata',outdir=r'C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\classified',pstatus=telemetry_status)
+    classify_by_boat(indir='/var/www/vhosts/studentdrifters.org/anno_ftp/Matdata',outdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/classified',pstatus=telemetry_status)
     print('classfy finished!')
     #check the reformat of every file:include header,heading,lat,lon,depth,temperature.
-    check_reformat_data(indir='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\classified',outdir='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\checked',startt=start_time,\
+    check_reformat_data(indir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/classified',outdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/checked',startt=start_time,\
                         endt=end_time,pstatus=telemetry_status,rdnf=raw_data_name_file,lack_data=lack_data_path)
     print('check format finished!')
     for i in range(len(subdir)):
