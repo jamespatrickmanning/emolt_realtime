@@ -67,7 +67,7 @@ def gps_compare_JiM(lat,lon,mindistfromharbor): #check to see if the boat is in 
     # function returns yes if this position is with "mindistfromharbor"  of a dock
     # note: lat and lon need to be in DDMM.M format so if you have decimal degrees you need to first convert using the  dd2dm function
     # we have been using 0.4 in minutes of a degree as our "mindistfromharbor" criteria
-    file='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\parameter\\harborlist.txt' # has header line lat, lon, harbor
+    file='/var/www/vhosts/emolt.org/huanxin_ftp/harborlist.txt' # has header line lat, lon, harbor
     df=pd.read_csv(file,sep=',')
     indice_lat=[i for i ,v in enumerate(abs(np.array(df['lat'])-lat)<mindistfromharbor) if v]
     indice_lon=[i for i ,v in enumerate(abs(np.array(df['lon'])-lon)<mindistfromharbor) if v]
@@ -1043,7 +1043,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
     return dict
           
 
-def statistic(input_dir,path_save,telemetry_status,start_time,end_time,telemetry_path='https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat',\
+def statistic(input_dir,path_save,telemetry_status,start_time,end_time,telemetry_path='https://emolt.org/emoltdata/emolt.dat',\
               accept_minutes_diff=20,acceptable_distance_diff=2,dpi=300,Ttdepth=5):
     """
     match the file and telementy.

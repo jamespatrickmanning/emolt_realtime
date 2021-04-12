@@ -116,7 +116,7 @@ def fitting(point,lat,lon):
     return y
 
 
-def getclim(lat1,lon1,dtime=dt.now(),var='Bottom_Temperature/BT_'): 
+def getclim(lat1,lon1,dtime,var='Bottom_Temperature/BT_'): 
     # gets climatology of Bottom_Temperature, Surface_Temperature, Bottom_Salinity, or Surface_Salinity
     # as calculated by Chris Melrose from 30+ years of NEFSC CTD data on the NE Shelf provided to JiM in May 2018 
     # where "lat1", "lon1", and "yrday" are the position and yearday of interest (defaulting to today)
@@ -124,12 +124,15 @@ def getclim(lat1,lon1,dtime=dt.now(),var='Bottom_Temperature/BT_'):
     # inputdir='/net/data5/jmanning/clim/' # hardcoded directory name where you need to explode the "Data for Manning.zip"
     # assumes an indidividual file is stored in the "<inputdir>/<var>" directory for each yearday
     yrday=str(int(dtime.strftime('%j')))
+    #print (555)
     # inputdir_csv='/home/pi/Desktop/towifi/'
-    inputdir='/net/data5/jmanning/clim/'
+    inputdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/clim/'
     dflat=pd.read_csv(inputdir+'LatGrid.csv',header=None)
     dflon=pd.read_csv(inputdir+'LonGrid.csv',header=None)
+    #print (777)
     lat=np.array(dflat[0])   # gets the first col (35 to 45)
-    lon=np.array(dflon.ix[0])# gets the first row (-75 to -65)
+    lon=np.array(dflon.iloc[0])# gets the first row (-75 to -65)
+    #print (888)
     clim=pd.read_csv(inputdir+var+yrday+'.csv',header=None) # gets bottom temp for this day of year
     idlat = np.abs(lat - lat1).argmin() # finds the neareast lat to input lat1
     idlon = np.abs(lon - lon1).argmin() # finds the neareast lon to input lon1

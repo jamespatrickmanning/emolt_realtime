@@ -16,13 +16,13 @@ import netCDF4
 min_miles_from_dock=2 # minimum miles from a dock position to be considered ok (this is not actual miles but minutes of degrees)
 temp_ok=[0,30]    # acceptable range of mean temps
 depth_ok=[10,500] # acceptable range of mean depths (meters)
-fraction_depth_error=0.15 # acceptable difference of observed bottom vs NGDC
+fraction_depth_error=0.2 # acceptable difference of observed bottom vs NGDC
 mindist_allowed=0.4 # minimum distance from nearest NGDC depth in km 
  
 
 def gps_compare_JiM(lat,lon,harbor_range): #check to see if the boat is in the harbor derived from Huanxin's "wifipc.py" functions   
     # function returns yes if this position is with "harbor_range" miles of a dock
-    file='/home/jmanning/py/harborlist.txt'
+    file='/var/www/vhosts/emolt.org/huanxin_ftp/harborlist.txt' # has header line lat, lon, harbor
     df=pd.read_csv(file,sep=',')
     [la,lo]=dd2dm(lat,lon) # converted decimal degrees to degrees minutes
     indice_lat=[i for i ,v in enumerate(abs(np.array(df['lat'])-la)<harbor_range) if v]
@@ -63,8 +63,9 @@ def nearlonlat_zl(lon,lat,lonp,latp): # needed for the next function get_FVCOM_b
 ######################################
 #  MAIN PROGRAM
 colnames=['vessel','esn','mth','day','hr_gmt','mn','yd','lon','lat','dum1','dum2','depth','depth_range','time_hours','mean_temp','std_temp','year']
-df=pd.read_csv('/net/pubweb_html/drifter/emolt.dat',sep='\s+',names=colnames,header=None)
-already_calculated_depth_ngdc=np.load('/home/jmanning/py/already_calculated_depth_ngdc.npy')
+#df=pd.read_csv('/net/pubweb_html/drifter/emolt.dat',sep='\s+',names=colnames,header=None)
+df=pd.read_csv('http://emolt.org/emoltdata/emolt.dat',sep='\s+',names=colnames,header=None)
+already_calculated_depth_ngdc=np.load('/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result/already_calculated_depth_ngdc.npy')
 # go through file line by line, create a datetime, and also create "flag" for each observation where:
 # 0 is good data
 # 1 is data from the dock
@@ -72,7 +73,7 @@ already_calculated_depth_ngdc=np.load('/home/jmanning/py/already_calculated_dept
 # 3 is bad out of range depth
 # 4 is depth not near bottom (<85% of water columne depth)
 # 5 is bad lat/lons not on the NE coast shelf
-print 'Note: ',str(len(already_calculated_depth_ngdc)),' NGDC depths already calculated.'
+#print ('Note: ',str(len(already_calculated_depth_ngdc)),' NGDC depths already calculated.')
 datet,flag,hours,save_depth_ngdc=[],[],[],[]
 for k in range(len(df)):
   datet.append(dt(df['year'][k],df['mth'][k],df['day'][k],df['hr_gmt'][k],df['mn'][k]))# creates a datetime
@@ -82,30 +83,33 @@ for k in range(len(df)):
   else:
     depth_ngdc=already_calculated_depth_ngdc[k] # here we are saving the time of calculating again
   save_depth_ngdc.append(depth_ngdc)# gets historical record of bottom depth from NGDC database and sets = nan when > mindist_allowed exceeds
-  print k,df['lon'][k],df['lat'][k],depth_ngdc
+  #print (k,df['lon'][k],df['lat'][k],depth_ngdc)
   if gps_compare_JiM(df['lat'][k],df['lon'][k],min_miles_from_dock)=='yes': # this means it is near a dock
     flag.append(1)
   elif (df['mean_temp'][k]<temp_ok[0]) or (df['mean_temp'][k]>temp_ok[1]):  # this means bad temps
     flag.append(2)
   elif (df['depth'][k]<depth_ok[0]) or (df['depth'][k]>depth_ok[1]):        # this means bad depths
     flag.append(3)
-  elif abs(df['depth'][k]-depth_ngdc)/depth_ngdc>fraction_depth_error:      # this means obs bottom depth very different from NGDC
+  elif (abs(abs(df['depth'][k])-abs(depth_ngdc)))/df['depth'][k]>fraction_depth_error:
+    #elif abs(df['depth'][k]-depth_ngdc)/depth_ngdc>fraction_depth_error:      # this means obs bottom depth very different from NGDC
+    #print ('depth  '+str(df['depth'][k])+'depthabs'+str(abs(abs(df['depth'][k])-abs(depth_ngdc))))
     flag.append(4)
   elif (df['lat'][k]>47.) or (df['lat'][k]<30.) or (df['lon'][k]>-60.) or (df['lon'][k]<-80.): # this means it is not on the NE coast (added this 5/14/2020)
     flag.append(5)
   else:
     flag.append(0)# good data
-print str(sum(num==1 for num in flag))+' hauls near dock'
-print str(sum(num==2 for num in flag))+' hauls with bad temp data'
-print str(sum(num==3 for num in flag))+' hauls with depth out of acceptable range = ',depth_ok,' meters'
-print str(sum(num==4 for num in flag))+' hauls with depth not within ',fraction_depth_error,' of NGDC depth'
-print str(len(flag))+' total hauls'
+#print (str(sum(num==1 for num in flag))+' hauls near dock')
+#print (str(sum(num==2 for num in flag))+' hauls with bad temp data')
+#print (str(sum(num==3 for num in flag))+' hauls with depth out of acceptable range = ',depth_ok,' meters')
+#print (str(sum(num==4 for num in flag))+' hauls with depth not within ',fraction_depth_error,' of NGDC depth')
+#print (str(len(flag))+' total hauls')
 df['datet']=datet
 df['flag']=flag
 df['hours']=hours# number of hours hauled
 dfnew=df[['vessel','datet','lat','lon','depth','depth_range','hours','mean_temp','std_temp','flag']]
-dfnew.to_csv('/net/pubweb_html/drifter/emolt_QCed.csv')
+dfnew.to_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed.csv')
 dfgood=dfnew[dfnew['flag']==0] # restrict to good data only
-dfgood.to_csv('/net/pubweb_html/drifter/emolt_QCed_good.csv')# added this in Oct 2019 for NCEI folks
+
+dfgood.to_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed_good.csv')# added this in Oct 2019 for NCEI folks
 if len(save_depth_ngdc)!=0: # this was required for times where emolt.dat is empty and nothing is saved
-  np.save('already_calculated_depth_ngdc.npy',save_depth_ngdc)
+  np.save('/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result/already_calculated_depth_ngdc.npy',save_depth_ngdc)

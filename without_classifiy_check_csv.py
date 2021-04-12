@@ -426,15 +426,15 @@ def main():
     ###########################
     end_time=datetime.utcnow()
     #start_time,end_time=week_start_end(end_time,interval=1)
-    start_time=end_time-timedelta(weeks=12)
+    start_time=end_time-timedelta(weeks=50)
     #download raw data from website
     #files=ftpdownload.download(localpath='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata', ftppath='/Matdata')
     
     #classify the file by every boats
     #rdm.classify_by_boat(indir='E:\\programe\\raw_data_match\\result\\Matdata',outdir='E:\\programe\\raw_data_match\\result\\classified',pstatus=telemetry_status)
     #classify_by_boat(indir='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata',outdir=r'C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\classified',pstatus=telemetry_status)
-    classify_by_boat(indir='/var/www/vhosts/studentdrifters.org/anno_ftp/Matdata',outdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/classified',pstatus=telemetry_status)
-    print('classfy finished!')
+    #classify_by_boat(indir='/var/www/vhosts/studentdrifters.org/anno_ftp/Matdata',outdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/classified',pstatus=telemetry_status)
+    print('did not classfy !')
     #check the reformat of every file:include header,heading,lat,lon,depth,temperature.
     check_reformat_data(indir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/classified',outdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/checked',startt=start_time,\
                         endt=end_time,pstatus=telemetry_status,rdnf=raw_data_name_file,lack_data=lack_data_path)

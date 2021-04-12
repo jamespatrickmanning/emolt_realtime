@@ -50,7 +50,8 @@ def dd2dm(lat,lon):
 def gps_compare_JiM(lat,lon,harbor_range): #check to see if the boat is in the harbor derived from Huanxin's "wifipc.py" functions   
     # function returns yes if this position is with "harbor_range" miles of a dock
     #file='/home/jmanning/py/harborlist.txt'
-    file='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\parameter\\harborlist.txt'
+    #file='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\parameter\\harborlist.txt'
+    file='/var/www/vhosts/emolt.org/huanxin_ftp/harborlist.txt'
     df=pd.read_csv(file,sep=',')
     [la,lo]=dd2dm(lat,lon) # converted decimal degrees to degrees minutes
     indice_lat=[i for i ,v in enumerate(abs(np.array(df['lat'])-la)<harbor_range) if v]
@@ -145,7 +146,7 @@ def upload_weely(Host, UserName, Pswd,remot_dir, local_folder):
         command = 'STOR '+local_list[i]
         sendFILEName = local_folder+local_list[i]
         ftp.storbinary(command, open(sendFILEName,'rb'))
-        print('upload '+local_list[i])
+        #print('upload '+local_list[i])
     ftp.quit()
     
 def get_emolt_no_telemetry(path, emolt_raw_path, emolt_QCed_df_save):
@@ -187,34 +188,44 @@ def main():
     # emolt='https://www.nefsc.noaa.gov/drifter/emolt.dat' #this is download from https://www.nefsc.noaa.gov/drifter/emolt.dat, 
     # emolt = 'https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat'
     emolt = 'https://nefsc.noaa.gov/drifter/emolt_ap3.dat'
+    emolt = 'http://emolt.org/emoltdata/emolt.dat'
     #telemetry_status=os.path.join(parameterpath,'telemetry_status.csv')
     telemetry_status='C:\\Weekly_Project\\Weekly_Project\\programe\\aqmain\\parameter\\telemetry_status.csv'
+                                                                                                    
+    telemetry_status='/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv'
     emolt_raw_save='C:\\Weekly_Project\\Weekly_Project\\Mingchao\\result'#output emolt_raw.csv
+    emolt_raw_save='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result'
     emolt_raw_path='C:\\Weekly_Project\\Weekly_Project\\Mingchao\\result\\emolt_raw.csv'#input emolt_raw.csv 
+    emolt_raw_path='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result/emolt_raw.csv'
     #path='https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat'#input emolt.dat
     path='https://nefsc.noaa.gov/drifter/emolt.dat' # JiM switch back to this when the apps version was empty on 24 Sep 2020
+    path='http://emolt.org/emoltdata/emolt.dat'
     lack_data_path='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\lack_data.txt'
+    lack_data_path='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result/lack_data.txt'
     # emolt_QCed_path = 'https://www.nefsc.noaa.gov/drifter/emolt_QCed.csv'
-    emolt_QCed_path = 'https://apps-nefsc.fisheries.noaa.gov/drifter/emolt_QCed.csv'
+    emolt_QCed_path = '/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed.csv'
     emolt_QCed_df_save = 'C:\\Weekly_Project\\Weekly_Project\\Mingchao\\result\\mingchao_weekly'
+    emolt_QCed_df_save = '/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result/'
+    
     # below hardcodes is the informations to upload local data to student drifter. 
     end_time=datetime.now().replace(hour=0,minute=0,second=0,microsecond=0)#-timedelta(days=1)#input local time,in match_tele_raw will change to UTCtime
     start_time=end_time-timedelta(weeks=1)
     ############################################## Main #####################################
     if not os.path.exists(picture_save):
         os.makedirs(picture_save)
-    print('match telemetered and raw data!')
+    #print('match telemetered and raw data!')
     #match the telementry data with raw data, calculate the numbers of successful matched and the differnces of two data. finally , use the picture to show the result.
     dict=rdm.match_tele_raw(os.path.join(output_path,'checked'),path_save=os.path.join(picture_save,'statistics'),telemetry_path=emolt,telemetry_status=telemetry_status,\
                             emolt_raw_save=emolt_raw_save,start_time=start_time,end_time=end_time,dpi=500,lack_data=lack_data_path,emolt_QCed_df_save=emolt_QCed_df_save)
-    print('finished match_tele_raw')
+    #print('finished match_tele_raw')
     emolt_no_telemetry_df=get_emolt_no_telemetry(path, emolt_raw_path, emolt_QCed_df_save)
-    print('finished get_emolt_no_telemetry')
+    #print('finished get_emolt_no_telemetry')
     emolt_no_telemetry_df.to_csv(os.path.join(emolt_QCed_df_save,'emolt_no_telemetry.csv'))
     df_good=dfgood(emolt_QCed_path, depth_ok, min_miles_from_dock, temp_ok, fraction_depth_error, mindist_allowed, emolt_no_telemetry=emolt_no_telemetry_df)
-    print('finished dfgood')
+    #print('finished dfgood')
     df_good.to_csv(os.path.join(emolt_QCed_df_save,'emolt_QCed_telemetry_and_wified.csv'))
-    print('match telemetered and raw data finished!')
+    df_good.to_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed_telemetry_and_wified.csv')
+    #print('match telemetered and raw data finished!')
     
 '''
     raw_d=pd.DataFrame(data=None,columns=['time','filename','mean_temp','mean_depth','mean_lat','mean_lon'])
