@@ -12,6 +12,7 @@ Modifications beginning in Feb 2018
 - Jan 21,2020 JiM added more "point_index" options after discovering some request not getting picked up
 - Jan 31,2020 JiM added case where there is no "PointLoc" in the json file
 - Aug 19,2020 JiM concantenated "rock_emolt2.dat" to emolt.dat near the bottom
+5/8/2021  Huanxin add paramiko.SFTP to fix sftp reading issue
 """
 from matplotlib.dates import date2num
 from datetime import datetime as dt
@@ -26,12 +27,17 @@ import glob
 import json
 import datetime
 import numpy as np
-from conversions import f2c
+import requests
+import paramiko
+#from conversions import f2c
+
 def read_codes():
   # get id,depth from /data5/jmanning/drift/codes_temp.dat
   inputfile1="codes_temp.dat"
   path1="/net/data5/jmanning/drift/"
+  path1="/var/www/vhosts/emolt.org/huanxin_ftp/"
   #path1='/home/hxu/Downloads/'
+  
   f1=open(path1+inputfile1,'r')
   esn,id,depth,form=[],[],[],[]
   for line in f1:
@@ -42,23 +48,38 @@ def read_codes():
   return esn,id,depth,form
   
 esn2,ide,depth,form=read_codes()
+#print (ide)
 #print esn2
 timenow=datetime.datetime.now()
 mth=str(timenow.month).zfill(2)
 day=str(timenow.day).zfill(2)
 year=str(timenow.year).zfill(4)
-os.chdir('/home/jmanning/py/backup')
-with pysftp.Connection('mapdata.assetlinkglobal.com', username='noaafisheries', password='TransientEddyFormations') as sftp:
+#os.chdir('/home/jmanning/py/backup')
+os.chdir('/var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup')
+try:
+    with pysftp.Connection('mapdata.assetlinkglobal.com', username='noaafisheries', password='TransientEddyFormations') as sftp:
+        for fname in sftp.listdir('outgoing'):
+            #print fname
+            if fname.startswith(year+mth+day):# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
+                sftp.get('outgoing/'+fname)
+except:
+    
+    transport = paramiko.Transport(('mapdata.assetlinkglobal.com',22))
+    transport.connect(username='noaafisheries', password='TransientEddyFormations')
+    sftp = paramiko.SFTPClient.from_transport(transport)
     for fname in sftp.listdir('outgoing'):
-        #print fname
-        if fname.startswith(year+mth+day):# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
-            sftp.get('outgoing/'+fname)
-files=sorted(glob.glob('/home/jmanning/py/backup/*.json'))
+            #print fname
+            if fname.startswith(year+mth+day):# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
+                sftp.get('outgoing/'+fname,'/var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup/'+fname)
+files=sorted(glob.glob('/var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup/*.json'))
+#files=sorted(glob.glob('/home/jmanning/py/backup/*.json'))
 sftp.close()
 
 
-f_output=open('/net/pubweb_html/drifter/emolt_ap3.dat','w')  
-f_output2=open('/net/pubweb_html/drifter/emolt_ap3_reports.dat','w')
+#f_output=open('/net/pubweb_html/drifter/emolt_ap3.dat','w')  
+#f_output2=open('/net/pubweb_html/drifter/emolt_ap3_reports.dat','w')
+f_output=open('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3.dat','w')  
+f_output2=open('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3_reports.dat','w')
 
 esn,date,lat,lon,battery,data_send,meandepth,rangedepth,timelen,meantemp,sdeviatemp=[],[],[],[],[],[],[],[],[],[],[],
 c=0
@@ -92,6 +113,7 @@ for i in files:
               f_output2.write(data['momentForward'][0]['Device']['name'][4:]+','+str(parser.parse(data['momentForward'][0]['Device']['moments'][0]['Moment']['date']))+','+str(lat)+','+str(lon)+'\n')
             # Here's where we need to define the start of the requested data.  It apparently varies with transmitter and we have to make an adjustment
       esn=data['momentForward'][0]['Device']['esn']
+      
       point_index=2
       try:
           hex=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][point_index]['PointHex']['hex']
@@ -149,17 +171,23 @@ for i in files:
             ib=[]
       #if (data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][2]['PointHex']['hex'][st:st+1]=='9') and (data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][2]['PointHex']['hex'][-18]!='b'): #make sure that is temperature data
       if (hex[st:st+1]=='9') and (len(ib)==0): #make sure that is temperature data
+        
        
         if int(parser.parse(data['momentForward'][0]['Device']['moments'][0]['Moment']['date']).strftime('%s')) not in date_all: #checks for repeats
               date_all.append(int(parser.parse(data['momentForward'][0]['Device']['moments'][0]['Moment']['date']).strftime('%s')))
+              
 
               try:
                   if hex[st:st+1]=='9': #make sure that is temperature data
                           if hex[st+1:st+2]=='9': # checking to make sure we do not have a double "9", added 4/8/19
                             st=st+1
                           addfiles.append(i)
+                          
                           # added this if group in Apr 2019 to make sure we are getting right values... making use of the 'eee' string 
                           index_idn1=(np.where(str(esn[-6:])==np.array(ide)))[0][0] # index of the codes_temp file
+                          #print (str(esn)[-6:])
+                          #index_idn1=(np.where(str(esn)[-6:]==np.array(ide)))[0][0]
+                          #print ('99999')
                           
                           if 'eee' in s:
                              ie=[i for i in range(len(s[18:])) if s[18:].startswith('eee', i)][0]# finds the index of the first 'e' in the 'eee' string skips by the lat/lon fields
@@ -192,36 +220,37 @@ for i in files:
                               lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][5]['PointLoc']['Lon']
 		                      #battery=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['Point']['Battery']
                             except:
-                              try:
-		                        lat=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][4]['PointLoc']['Lat'] #possiblely have problem to read this data
-		                        lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][4]['PointLoc']['Lon']
-		                        #battery=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['Point']['Battery']                              
-                              except:
                                 try:
-		                          lat=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['PointLoc']['Lat'] #possiblely have problem to read this data
-		                          lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['PointLoc']['Lon']
-		                          #battery=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][7]['Point']['Battery']
-                                except: # added this Jan 31,2020 when Nathaniel_Lee had no pointloc
-                                   lat=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][1]['Point']['MetaLat'] 
-                                   lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][1]['Point']['MetaLon']                                                               
+                                    lat=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][4]['PointLoc']['Lat'] #possiblely have problem to read this data
+                                    lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][4]['PointLoc']['Lon']
+    		                        #battery=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['Point']['Battery']        
+                                except:
+                                    try:
+                                        lat=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['PointLoc']['Lat'] #possiblely have problem to read this data
+                                        lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][6]['PointLoc']['Lon']
+                                        #battery=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][7]['Point']['Battery']
+                                    except: # added this Jan 31,2020 when Nathaniel_Lee had no pointloc
+                                        lat=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][1]['Point']['MetaLat'] 
+                                        lon=data['momentForward'][0]['Device']['moments'][0]['Moment']['points'][1]['Point']['MetaLon']                                                               
                           date=parser.parse(data['momentForward'][0]['Device']['moments'][0]['Moment']['date'])
                           yr1=date.year
                           mth1=date.month
                           day1=date.day
                           hr1=date.hour
                           mn1=date.minute
-                          
+                          #print ('123')
                           yd1=date2num(datetime.datetime(yr1,mth1,day1,hr1,mn1))-date2num(datetime.datetime(yr1,1,1,0,0))
                           datet=datetime.datetime(yr1,mth1,day1,hr1,mn1,tzinfo=None)                    
                           data_send=hex
                   
                   try :
-                      
+                        
                     if meantemp<30:
                       if (esn[-6:]=='319270') and (datet>dt(2018,5,9,0,0,0)):# added this 9/28 since Bingwei started using this transmitter 
-                         print 'should be skipping this Lady Jane case at '+str(datet)
+                         print ('should be skipping this Lady Jane case at '+str(datet))
                       else:   
                         index_idn1=(np.where(str(esn[-6:])==np.array(ide)))[0][0] # index of the codes_temp file
+                        #index_idn1=(np.where(esn[-6:]==np.array(ide)))[0][0]
                         id_idn1=esn2[index_idn1] # where is the consecutive time this unit was used
                         depth_idn1=-1.0*float(depth[index_idn1]) # make depth negative
                         f_output.write(str(id_idn1).rjust(10)+" "+str(esn[-6:]).rjust(7)+ " "+str(mth1).rjust(2)+ " " +
@@ -235,28 +264,29 @@ for i in files:
                       pass
                   
               except:
+                  #print ('4321')
                   c=c+1
                   pass
     except:
         pass        
 f_output.close()
 f_output2.close()
-noext=sys.argv[1]
-print noext[:-4]
+#noext=sys.argv[1]
+#print (noext[:-4])
+
 #os.system('cp /net/pubweb_html/drifter/emolt_temp.dat /net/pubweb_html/drifter/emolt.dat')
-os.system('cat /net/pubweb_html/drifter/emolt_ap3.dat >> /net/pubweb_html/drifter/emolt.dat')
+os.system('cat /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3.dat >> /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat')
 # Here's where we want to concantenate RockBlock transmissions to AP3 on 8/19/2020
-urllib.urlretrieve ("https://studentdrifters.org/posthuanxin/rock_emolt2.dat", "rock_emolt2.dat") # commented out on 9/4/2020 when bad data came through
-#urllib.urlretrieve ("https://studentdrifters.org/posthuanxin/emolt_nicks.dat","emolt_nicks.dat")
-#urllib.urlretrieve ("https://emolt.org/emolt_nicks.dat","emolt_nicks.dat")# this option wasn't working ... I was getting a "socket error: SSL: CERTIFICATE_VERIFY_FAILED"
-os.system('cat rock_emolt2.dat >> /net/pubweb_html/drifter/emolt.dat')
-#os.system('cat emolt_nicks.dat >> /net/pubweb_html/drifter/emolt.dat')
-pipe2 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/home/jmanning/py/getlastfix.py'])
-pipe3 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/home/jmanning/py/qaqc_emolt.py'])
+#urllib.urlretrieve ("https://studentdrifters.org/posthuanxin/rock_emolt2.dat", "rock_emolt2.dat") # commented out on 9/4/2020 when bad data came through
+os.system('cat /var/www/vhosts/emolt.org/httpdocs/posthuanxin/rock_emolt2.dat | sort -uk2 | sort -nk1 | cut -f2- >> /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat | sort -uk2 | sort -nk1 | cut -f2-')
+os.system('cat -n /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat  | sort -uk2 | sort -nk1 | cut -f2- > /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt2.dat')
+os.system('cp /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt2.dat /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat')
+
+#pipe2 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/home/jmanning/py/getlastfix.py'])
+#pipe3 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/home/jmanning/py/qaqc_emolt.py'])
 # the following line creates the "emolt.xml" that is read by drifter/fishtemps.html googlemap
 #pipe4 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/net/home3/ocn/jmanning/py/ap2s2xml.py',noext[:-4]]) # commented this line 4/10/19 since apparently not needed 
-  
-  
+
   
   
   

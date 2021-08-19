@@ -1,4 +1,11 @@
-#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug 18 20:03:45 2021
+
+@author: xavier
+"""
+
+#@title doppio (functions for extracting doppio output) { form-width: "5%" }
 # -*- coding: utf-8 -*-
 """
 Created on Wed Nov 21 09:10:47 2018
@@ -13,14 +20,72 @@ Modifications by lei Zhao Mar 20, 2019
 
 Modifications by JiM Mar 21, 2019
 -just added some more documentation and spelling changes
-"""
 
+Modifications by JiM Aug 17, 2021
+-added up-to-date url History_BEST using new "time" hours since 2017-11-01
+"""
+#!pip install netCDF4
 import netCDF4
 import datetime
 import zlconversions as zl  # this is a set of Lei Zhao's functions that must be in same folder 
 import numpy as np
+def get_doppio_url(date):
+    # form the doppio url based on hours since Nov 11, 2017 where "date" is a datetime
+    tw=str(int((date-datetime.datetime(2017,11,1,0,0,0)).total_seconds()/3600)) # gives hours since Nov 11, 2017
+    url='http://tds.marine.rutgers.edu/thredds/dodsC/roms/doppio/2017_da/his/History_Best?\
+        time['+tw+':'+tw+'],lon_rho[0:1:105][0:1:241],lat_rho[0:1:105][0:1:241],temp['+tw+':1:'+tw+'][0:1:0][0:1:105][0:1:241]'
+    return url
+def get_doppio_Best(time=datetime.datetime.now(),lat=0,lon=0,depth='bottom',fortype='temperature'):
+    """
+    This is JiM's simplification of ZL's get_doppio.   
+    This is the newer version where we get runs from the "History_Best" single site rather than the daily files.
+    outputs the temperature of point location
+    fortype ='temperature' where, in the future, we might want to add "temp & depth"
+    """
+    if not doppio_coordinate(lat,lon):
+        print('the lat and lon out of range in doppio')
+        return np.nan,np.nan
+    try:
+            url=get_doppio_url(time)
+            #print(url)
+            nc=netCDF4.Dataset(url)
+            lons=nc.variables['lon_rho'][:]
+            lats=nc.variables['lat_rho'][:]
+            doppio_time=nc.variables['time']
+            doppio_temp=nc.variables['temp']
+    except:
+            print('no model data in for this time and place.')
+    min_diff_time=abs(datetime.datetime(2017,11,1,0,0,0)+datetime.timedelta(hours=int(doppio_time[0]))-time)
+    min_diff_index=0
+    for i in range(1,len(doppio_time)):
+            diff_time=abs(datetime.datetime(2017,11,1,0,0,0)+datetime.timedelta(hours=int(doppio_time[i]))-time)
+            if diff_time<min_diff_time:
+                min_diff_time=diff_time
+                min_diff_index=i
+    #calculate the min,second small and third small distance and index
+    target_distance=zl.dist(lat1=lats[0][0],lon1=lons[0][0],lat2=lats[0][1],lon2=lons[0][1])
+    index_1,index_2=zl.find_nd(target=target_distance,lat=lat,lon=lon,lats=lats,lons=lons)
 
-def get_doppio(lat=0,lon=0,depth='bottom',time='2018-11-12 12:00:00',fortype='temperature'):
+    layer_index=0
+    # if the point is on the edge of the grid, we apparently need to move it one cell away for the fitting routine to work?
+    if index_1==0:
+        index_1=1
+    if index_1==len(lats)-1:
+        index_1=len(lats)-2
+    if index_2==0:
+        index_2=1
+    if index_2==len(lats[0])-1:
+        index_2=len(lats[0])-2
+    point=[[lats[index_1][index_2],lons[index_1][index_2],doppio_temp[min_diff_index,layer_index,index_1,index_2]],\
+            [lats[index_1-1][index_2],lons[index_1-1][index_2],doppio_temp[min_diff_index,layer_index,(index_1-1),index_2]],\
+            [lats[index_1+1][index_2],lons[index_1+1][index_2],doppio_temp[min_diff_index,layer_index,(index_1+1),index_2]],\
+            [lats[index_1][index_2-1],lons[index_1][index_2-1],doppio_temp[min_diff_index,layer_index,index_1,(index_2-1)]],\
+            [lats[index_1][index_2+1],lons[index_1][index_2+1],doppio_temp[min_diff_index,layer_index,index_1,(index_2+1)]]]
+    point_temp=fitting(point,lat,lon)
+    return point_temp
+
+
+def get_doppio(time='2018-11-12 12:00:00',lat=0,lon=0,depth='bottom',fortype='temperature'):
     """
     notice:
         the format of time is like "%Y-%m-%d %H:%M:%S" this time is utctime  or it can also be datetime
@@ -28,8 +93,8 @@ def get_doppio(lat=0,lon=0,depth='bottom',time='2018-11-12 12:00:00',fortype='te
     the module only output the temperature of point location
     if fortype ='temperature',only return temperature, else return temperature and depth
     """
-    if depth==99999:
-       depth='bottom'
+    #if depth==99999:
+    #   depth='bottom'
     if not doppio_coordinate(lat,lon):
         print('the lat and lon out of range in doppio')
         return np.nan,np.nan
@@ -41,8 +106,8 @@ def get_doppio(lat=0,lon=0,depth='bottom',time='2018-11-12 12:00:00',fortype='te
         print('check the type of input time in get_doppio')
     for m in range(0,7):
         try:
-            url_time=(date_time-datetime.timedelta(days=m)).strftime('%Y-%m-%d')#
-            url=zl.get_doppio_url(url_time)
+            #url_time=(date_time-datetime.timedelta(days=m)).strftime('%Y-%m-%d')#
+            url=get_doppio_url(date_time)
             #get the data 
             nc=netCDF4.Dataset(url)
             lons=nc.variables['lon_rho'][:]
@@ -167,4 +232,3 @@ def doppio_coordinate(lat,lon):
         return True
     else:
         return False
-

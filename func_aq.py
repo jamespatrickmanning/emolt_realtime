@@ -54,7 +54,7 @@ def plot_aq(fn,path,allfileimg,percent):
     try: 
         df=pd.read_csv(fn,sep=',',skiprows=9,parse_dates={'datet(GMT)':[1]},index_col='datet(GMT)',date_parser=parse)#creat a new Datetimeindex
     except:
-#        print ('no data2 in '+fn)
+        print ('no data2 in '+fn)
         pic_name=''
         return pic_name
     
@@ -64,7 +64,11 @@ def plot_aq(fn,path,allfileimg,percent):
     df=df.loc[(df['Depth(m)']>10.0)]
     df=df.loc[(df['Depth(m)']>percent*np.mean(df['Depth(m)']))]  # get rid of shallow data
     df=df.loc[(df['Depth(m)']>df.mean()['Depth(m)']-3*np.std(df['Depth(m)'])) & (df['Depth(m)']<np.mean(df['Depth(m)'])+3*np.std(df['Depth(m)']))] # reduces time series to deep obs
+    
+    df=df.iloc[10:] #take off temp time delay
+    
     if len(df)<10:
+        print ('223333333333333333333333333333333333333333333333333333333333333333333')
         return ''
     for o in list(reversed(range(len(df)))): # usually ,aquetec is collecting data every 1 minute, if the period between two collect above 30 minutes,we get rid of the previous one 
         if (df.index[o]-df.index[o-1])>=pd.Timedelta('0 days 00:30:00') or o==0: 
@@ -73,7 +77,7 @@ def plot_aq(fn,path,allfileimg,percent):
     if len(df)<10:
         return ''
     #start draw picture 
-    fig=plt.figure(figsize=[9,6])
+    fig=plt.figure(figsize=[10,5])
     ax1=fig.add_subplot(211)
     ax1.plot(df.index,df['Temperature(C)'],'red')
     ax1.set_ylabel('Temperature (Celius)')
@@ -158,7 +162,7 @@ def plot_aq(fn,path,allfileimg,percent):
     plt.gcf().autofmt_xdate()    
     ax2.set_xlabel('Local TIME')
     
-    plt.savefig(fnout)
+    plt.savefig(fnout,dpi=70)
     plt.savefig(fnout.replace('.png','.ps'),orientation='landscape')
     plt.close()
     pic_name= fnout+'.png'

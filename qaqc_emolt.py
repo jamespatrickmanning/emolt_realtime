@@ -4,6 +4,7 @@
 # Author: JiM in late 2018
 # Modification in Apr 2019 to add check on depth compared to NGDC estimates
 # Modification in Oct 2019 to output "good" only as emolt_QCed_good.csv
+# only <50m apply on flag 4 , Jun 2021
 
 import pandas as pd
 import numpy as np
@@ -18,7 +19,25 @@ temp_ok=[0,30]    # acceptable range of mean temps
 depth_ok=[10,500] # acceptable range of mean depths (meters)
 fraction_depth_error=0.2 # acceptable difference of observed bottom vs NGDC
 mindist_allowed=0.4 # minimum distance from nearest NGDC depth in km 
- 
+def nearlonlat(lon,lat,lonp,latp): 
+    """
+    i=nearlonlat(lon,lat,lonp,latp) change
+    find the closest node in the array (lon,lat) to a point (lonp,latp)
+    input:
+        lon,lat - np.arrays of the grid nodes, spherical coordinates, degrees
+        lonp,latp - point on a sphere
+        output:
+            i - index of the closest node
+            For coordinates on a plane use function nearxy          
+            Vitalii Sheremet, FATE Project  
+    """
+    cp=np.cos(latp*np.pi/180.)
+    # approximation for small distance
+    dx=(lon-lonp)*cp
+    dy=lat-latp
+    dist2=dx*dx+dy*dy
+    i=np.argmin(dist2)
+    return i 
 
 def gps_compare_JiM(lat,lon,harbor_range): #check to see if the boat is in the harbor derived from Huanxin's "wifipc.py" functions   
     # function returns yes if this position is with "harbor_range" miles of a dock
@@ -36,15 +55,27 @@ def gps_compare_JiM(lat,lon,harbor_range): #check to see if the boat is in the h
 
 def get_depth(loni,lati,mindist_allowed):
     # routine to get depth (meters) using vol1 from NGDC
-    url='https://www.ngdc.noaa.gov/thredds/dodsC/crm/crm_vol1.nc'
-    nc = netCDF4.Dataset(url).variables 
-    lon=nc['x'][:]
-    lat=nc['y'][:]
-    xi,yi,min_dist= nearlonlat_zl(lon,lat,loni,lati) 
-    if min_dist>mindist_allowed:
-      depth=np.nan
-    else:
-      depth=nc['z'][yi,xi].data
+    try:
+        if lati>40:
+            url='https://www.ngdc.noaa.gov/thredds/dodsC/crm/crm_vol1.nc'
+        else:
+            url='https://www.ngdc.noaa.gov/thredds/dodsC/crm/crm_vol2.nc'
+        nc = netCDF4.Dataset(url).variables 
+        lon=nc['x'][:]
+        lat=nc['y'][:]
+        xi,yi,min_dist= nearlonlat_zl(lon,lat,loni,lati) 
+        if min_dist>mindist_allowed:
+          depth=np.nan
+        else:
+          depth=nc['z'][yi,xi].data
+    except:
+        url='https://coastwatch.pfeg.noaa.gov/erddap/griddap/srtm30plus_LonPM180.csv?z%5B(33.):1:(47.)%5D%5B(-78.):1:(-62.)%5D'  
+        df=pd.read_csv(url)
+        lon=df['longitude'].values[1:].astype(np.float)
+        lat=df['latitude'].values[1:].astype(np.float)
+        i= nearlonlat(lon,lat,loni,lati)
+        depth=df['z'].values[i]
+      
     return float(depth)#,min_dist
 
 def nearlonlat_zl(lon,lat,lonp,latp): # needed for the next function get_FVCOM_bottom_temp 
@@ -78,10 +109,13 @@ datet,flag,hours,save_depth_ngdc=[],[],[],[]
 for k in range(len(df)):
   datet.append(dt(df['year'][k],df['mth'][k],df['day'][k],df['hr_gmt'][k],df['mn'][k]))# creates a datetime
   hours.append(df['time_hours'][k])#*24)  changed this on 21 Nov 2019 because we do NOT want to multiply by 24 changed "days" to "hours"
+  
   if k>len(already_calculated_depth_ngdc)-1: # only look for ngdc depth if this case if recent
     depth_ngdc=get_depth(df['lon'][k],df['lat'][k],mindist_allowed)
   else:
     depth_ngdc=already_calculated_depth_ngdc[k] # here we are saving the time of calculating again
+  
+  #depth_ngdc=get_depth(df['lon'][k],df['lat'][k],mindist_allowed)
   save_depth_ngdc.append(depth_ngdc)# gets historical record of bottom depth from NGDC database and sets = nan when > mindist_allowed exceeds
   #print (k,df['lon'][k],df['lat'][k],depth_ngdc)
   if gps_compare_JiM(df['lat'][k],df['lon'][k],min_miles_from_dock)=='yes': # this means it is near a dock
@@ -93,7 +127,10 @@ for k in range(len(df)):
   elif (abs(abs(df['depth'][k])-abs(depth_ngdc)))/df['depth'][k]>fraction_depth_error:
     #elif abs(df['depth'][k]-depth_ngdc)/depth_ngdc>fraction_depth_error:      # this means obs bottom depth very different from NGDC
     #print ('depth  '+str(df['depth'][k])+'depthabs'+str(abs(abs(df['depth'][k])-abs(depth_ngdc))))
-    flag.append(4)
+    if abs(df['depth'][k])>50 or abs(df['depth'][k])<8: #flag 4 only apply on > 50 m
+        flag.append(4)
+    else:
+        flag.append(0)
   elif (df['lat'][k]>47.) or (df['lat'][k]<30.) or (df['lon'][k]>-60.) or (df['lon'][k]<-80.): # this means it is not on the NE coast (added this 5/14/2020)
     flag.append(5)
   else:

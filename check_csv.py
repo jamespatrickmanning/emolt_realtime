@@ -292,7 +292,10 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
             rdm.Write_Text(lack_data,file,reason='pressure problem')
             continue
         #Jim&Mingchao 10,Mar,2020 filter the values not enough min minutes
-        dts=pd.to_datetime(df['Datet(GMT)'])
+        try:
+            dts=pd.to_datetime(df['Datet(GMT)'])
+        except:
+            continue
         total_diffs=dts[len(dts)-1]-dts[0]
         if total_diffs < min_minutes:
             #print('bad data! time not more than 10 minutes:'+file)
@@ -416,6 +419,7 @@ def main():
     output_path=realpath.replace('py','result')  #use to save the data 
     #telemetry_status=os.path.join(parameterpath,'telemetry_status.csv')
     telemetry_status='/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv'
+    #telemetry_status='https://docs.google.com/spreadsheets/d/1uLhG_q09136lfbFZppU2DU9lzfYh0fJYsxDHUgMB1FM/export?format=csv&amp'
     lack_data_path=os.path.join(output_path, 'lack_data.txt')
     #lack_data_path='E:/programe/raw_data_match/result/lack_data.txt'#store the name of file that lacked data after 'classfy finished'
     # below hardcodes is the informations to upload local data to student drifter. 

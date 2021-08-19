@@ -10,6 +10,7 @@ Created on Wed Sep  6 13:37:50 2017
 Modified by Huanxin 9 Oct 2018 to make temperature read degF
 Modified by Lei Zhao in June 2019 to add models and climatology
 Modified by JiM in Dec 2019 & Jan/Feb 2020 to improve readability for NERACOOS transfer
+Modified by Huanxin 8 2021  works on emolt.org and  automatically download telemetry_status.csv 
 
 This program include 4 basic applications
 1. Download raw csv files which have been uploaded by 'wifi.py' to studentdrifters.org ("SD" machine)
@@ -84,7 +85,29 @@ def download_raw_file(ftppath,localpath):
     ftp.quit() # This is the “polite” way to close a connection
     print ('New files downloaded')
     return files
-
+def download_raw_file_2(ftppath,localpath,starttime,endtime):
+    '''download the raw data from the student drifter'''
+    #ftp=ftplib.FTP('66.114.154.52','huanxin','123321')
+    print ('Logging in.')
+    print ('Accessing files')
+    starttime=starttime.strftime("%Y%m")
+    endtime=endtime.strftime("%Y%m")
+    allfilelisthis=csv_files(list_all_files(localpath)) #get all filename and file path exist
+    #print(allfilelisthis)
+    #list_all_ftpfiles(ftp,rootdir=ftppath,localpath=localpath,local_list=allfilelisthis)  #download the new raw data there is not exist in local directory 
+    allfilelistnew=csv_files(list_all_files(ftppath))  #get all filename and file path exist after update
+    files=allfilelistnew #get the list of filename and filepath that updated
+    #ftp.quit() # This is the “polite” way to close a connection
+    copied_files=[]
+    for i in files:
+        if starttime in i or endtime in i:
+            
+            if localpath+i.split('/')[-1] not in allfilelisthis:
+                print (i)
+                os.system('cp '+i+' '+localpath+i.split('/')[-1])
+                copied_files.append(localpath+i.split('/')[-1])
+    print ('New files downloaded to emoltdata download_raw')
+    return copied_files
 
 ###### START FTP SESSION TO THE OLD STUDENTDRIFTERS MACHINE AND DOWNLOAD RAW CSV
 def eastern_to_gmt(filename):
@@ -249,7 +272,9 @@ def make_html(raw_path,telemetrystatus_file,pic_path,dictionary,htmlpath,df,pdel
                                           vessel_name=df_tele_status['Boat'].iloc[ves]
                     pic_ym=datet.strftime('%Y%m')
                     #print (vessel_number)
-                    picturepath=os.path.join(pic_path,vessel_name,pic_ym)
+                    #picturepath=os.path.join(pic_path,vessel_name,pic_ym)
+                    picturepath=os.path.join(pic_path)
+                    #print ('picture path is :'+picturepath)
                     try:
                         dic=get_moudules_value(filepathname=dictionary,vessel_name=vessel_name,dtime=datet)
                         doppio_t,gomofs_t,FVCOM_t,clim_t=dic['Doppio'],dic['GoMOLFs'],dic['FVCOM'],dic['CrmClim']
@@ -281,6 +306,7 @@ def make_html(raw_path,telemetrystatus_file,pic_path,dictionary,htmlpath,df,pdel
                         dt_fnt=datetime.datetime.strptime(filename_time[0]+filename_time[1],'%Y%m%d%H%M%S')
                         if abs(dt_fnt-datet)<=datetime.timedelta(minutes=pdelta):
                             link='"'+'http://emolt.org'+('/'+os.path.join('/huanxinpic',fname)).replace('//','/')+'"'
+                            print (link)
                             icon='star'
                             if html=='':
                                 html='''
@@ -356,20 +382,22 @@ def make_png(files,pic_path,rootdir,telemetry_status_df):
         return 0
     allfileimg=list_all_files(pic_path)  # use function "list_all_files" to get the list of file's path and name
     telemetry_status_df.index=telemetry_status_df['Boat']
-    print ('pic path'+pic_path)
+    #print ('pic path'+pic_path)
     #print ('allfileimg'+allfileimg)
     
     for m in range(len(files)):        #loop every file, create picture
-        if '2020' not in files[m]:
+        if '2021' not in files[m]:
             continue
         vessel_name=os.path.dirname(files[m]).split('/')[-2]
+        '''
         try:
             ForM=telemetry_status_df['Fixed vs. Mobile'][vessel_name]
         except:
             print (files[m])
             vessel_name=vessel_name.replace('_',' ')
             ForM=telemetry_status_df['Fixed vs. Mobile'][vessel_name]
-            
+        '''
+        ForM='Mobile'
         if ForM=='Fixed':
             percent=0.95
         elif ForM=='Mobile':
@@ -378,7 +406,7 @@ def make_png(files,pic_path,rootdir,telemetry_status_df):
             percent=0.85
         imgfile=files[m].replace(rootdir,pic_path)   #create the image file name 
         picture_path,fname=os.path.split(imgfile)   # get the path of imge need to store
-        #print (picture_path)
+        #print ('picturepath   '+picture_path)
         pic_name=plot_aq(files[m],picture_path,allfileimg,percent=percent) # plot graph
         if pic_name=='':
             print(pic_name)
@@ -398,28 +426,32 @@ def main():
     dictionarypath=ddir[::-1].replace('py'[::-1],'dictionary'[::-1],1)[::-1]
     parameterpath=ddir[::-1].replace('py'[::-1],'parameter'[::-1],1)[::-1]
     Rawf_path=ddir[::-1].replace('py'[::-1],'aq/download'[::-1],1)[::-1]
-    pic_path=ddir[::-1].replace('py'[::-1],'aq/aqu_pic'[::-1],1)[::-1]
+    pic_path='/var/www/vhosts/emolt.org/httpdocs/huanxinpic/'
     htmlpath=ddir[::-1].replace('py'[::-1],'html'[::-1],1)[::-1]
     htmlpath='/var/www/vhosts/emolt.org/httpdocs/'
     #HARDCODES
+    #download telemetry.csv file
+    os.system("wget -O '/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv' 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTW0CxH3sBjQC8H3SltRVwtLXsXHA7gyBzEUjiZSm57WF3POEHifIh-4TO--97uQlmRYGSv-BwOjoNC/pub?gid=1507135250&single=true&output=csv'")
     telemetrystatus_file='/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv'
     dictionaryfile='/var/www/vhosts/emolt.org/httpdocs/emoltdata/dictionary.json' # dictionary with endtime,doppio,gomofs,fvcom where each model has vesselname,lat,lon,time,temp
 
     ##############################
+    Rawf_path='/var/www/vhosts/emolt.org/httpdocs/emoltdata/downloaded_raw/'
     print (Rawf_path)
     print (pic_path)
-    #files=download_raw_file(ftppath='/var/www/vhosts/studentdrifters.org/anno_ftp/Raw_Data/checked',localpath=Rawf_path)# UPDATE THE RAW csv FILE
-    #files=download_raw_file(ftppath='/var/www/vhosts/emolt.org/huanxin_ftp/aq_main2',localpath=Rawf_path)# UPDATE THE RAW csv FILE
-    files=download_raw_file(ftppath='/Raw_Data/checked',localpath=Rawf_path)
-    #files=download_raw_file(ftppath='/Matdata',localpath=Rawf_path)
     starttime=datetime.datetime.now()-datetime.timedelta(days=30)
     endtime=datetime.datetime.now()
+    #files=download_raw_file(ftppath='/var/www/vhosts/studentdrifters.org/anno_ftp/Raw_Data/checked',localpath=Rawf_path)# UPDATE THE RAW csv FILE
+    #files=download_raw_file(ftppath='/var/www/vhosts/emolt.org/huanxin_ftp/aq_main2',localpath=Rawf_path)# UPDATE THE RAW csv FILE
+    files=download_raw_file_2(ftppath='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/checked',localpath=Rawf_path,starttime=starttime,endtime=endtime)
+    #files=download_raw_file(ftppath='/Matdata',localpath=Rawf_path)
     telemetrystatus_df=rf.read_telemetrystatus(path_name=telemetrystatus_file)
 
- 
+    make_png(files,pic_path=pic_path,rootdir=Rawf_path,telemetry_status_df=telemetrystatus_df)# make time series image
+    print('upload png file')
     #emolt='http://www.nefsc.noaa.gov/drifter/emolt.dat' # this is the output of combining getap2s.py and getap3.py
-    emolt='http://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat' # this is the output of combining getap2s.py and getap3.py
-    emolt='emolt.dat'
+    #emolt='http://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat' # this is the output of combining getap2s.py and getap3.py
+    #emolt='emolt.dat'
     emolt='/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed_telemetry_and_wified.csv'
     
     emolt_df_wifi=rf.screen_emolt(start_time=starttime,end_time=endtime,path=emolt)#get emolt data 
@@ -436,7 +468,7 @@ def main():
     #print (files)
     make_png(files,pic_path=pic_path,rootdir=Rawf_path,telemetry_status_df=telemetrystatus_df)# make time series image
     print('upload png file')
-    up.sd2drf(local_dir=pic_path,remote_dir='/all_pic',filetype='png')   #upload the picture to the studentdrifter
+    #up.sd2drf(local_dir=pic_path,remote_dir='/all_pic',filetype='png')   #upload the picture to the studentdrifter
     print('make html')
 #    #create the dictionary
     #cmd.update_dictionary(telemetrystatus_file,starttime,endtime,dictionaryfile)   #that is a function use to update the dictionary

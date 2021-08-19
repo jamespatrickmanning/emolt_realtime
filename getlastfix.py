@@ -35,12 +35,13 @@ mindistfromharbor=0.4 # mimimum distance in miles from harbor to be considered r
 mindist_allowed=0.4 # minimum distance from nearest NGDC depth in km 
 
 # function to get vessel_name and probe serial number given vessel_number
+'''
 def getclim(lat1=43.,lon1=-73.0,yrday=dt.now().strftime('%j').lstrip('0'),var='Bottom_Temperature/BT_'): 
   # gets climatology of Bottom_Temperature  (note:Surface_Temperature, Bottom_Salinity, or Surface_Salinity also available)
   # as calculated by Chris Melrose from 30+ years of NEFSC CTD data on the NE Shelf 
   # where "lat1", "lon1", and "yrday" are the position and yearday of interest
   # where "var" is the variable of interest (usually Bottom_Temperature) 
-  inputdir='/net/data5/jmanning/clim/' # hardcoded climatology directory name "/home/pi/clim/"
+  inputdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/clim/' # hardcoded climatology directory name "/home/pi/clim/"
   dflat=pd.read_csv(inputdir+'LatGrid.csv',header=None)
   dflon=pd.read_csv(inputdir+'LonGrid.csv',header=None)
   lat=np.array(dflat[0])   # gets the first col (35 to 45)
@@ -49,9 +50,32 @@ def getclim(lat1=43.,lon1=-73.0,yrday=dt.now().strftime('%j').lstrip('0'),var='B
   idlat = np.abs(lat - lat1).argmin() # finds the neareast lat to input lat1
   idlon = np.abs(lon - lon1).argmin() # finds the neareast lon to input lon1
   return clim[idlon][idlat]
+'''
+def getclim(lat1,lon1,path,dtime,var='Bottom_Temperature/BT_'): 
+    # gets climatology of Bottom_Temperature, Surface_Temperature, Bottom_Salinity, or Surface_Salinity
+    # as calculated by Chris Melrose from 30+ years of NEFSC CTD data on the NE Shelf provided to JiM in May 2018 
+    # where "lat1", "lon1", and "yrday" are the position and yearday of interest (defaulting to today)
+    # where "var" is the variable of interest (defaulting to Bottom_Temperature) 
+    # inputdir='/net/data5/jmanning/clim/' # hardcoded directory name where you need to explode the "Data for Manning.zip"
+    # assumes an indidividual file is stored in the "<inputdir>/<var>" directory for each yearday
+    yrday=str(int(dtime.strftime('%j')))
+    #print (555)
+    # inputdir_csv='/home/pi/Desktop/towifi/'
+    inputdir='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/clim/'
+    dflat=pd.read_csv(inputdir+'LatGrid.csv',header=None)
+    dflon=pd.read_csv(inputdir+'LonGrid.csv',header=None)
+    #print (777)
+    lat=np.array(dflat[0])   # gets the first col (35 to 45)
+    lon=np.array(dflon.iloc[0])# gets the first row (-75 to -65)
+   
+    clim=pd.read_csv(inputdir+var+yrday+'.csv',header=None) # gets bottom temp for this day of year
+    
+    idlat = np.abs(lat - lat1).argmin() # finds the neareast lat to input lat1
+    idlon = np.abs(lon - lon1).argmin() # finds the neareast lon to input lon1
+    return clim[idlon][idlat]
 
 def getvesselname(vessel_number):
-  df=pd.read_csv('/net/data5/jmanning/drift/codes_temp.dat',sep='\s+',header=None)
+  df=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/codes_temp.dat',sep='\s+',header=None)
   vn=df[df[0]==vessel_number][3].values[0] #
   sn=df[df[0]==vessel_number][4].values[-1]# gets the last one
   form=df[df[0]==vessel_number][5].values[-1]# fixed or mobile as "f" or "m"
@@ -62,7 +86,9 @@ def getlastwifi(sn):
   #if (sn[0:2]=='7a') or (sn[0:2]=='4d'): # case of Lowell Instruments
   if (sn[0]!='1'): # case of Lowell Instruments where serial numbers starting with "1" are aquatec (change made 3/13/19)
     #filenames=glob.glob('/net/data5/jmanning/li/Matdata/temporary/li_*.csv')
-    filenames=glob.glob('/home/jmanning/py/aq_main/aqmain_and_raw_check/raw_data_check/result/Matdata/li_*.csv') # change made after lei Zhao's method was implemented in Aug 2019
+    #filenames=glob.glob('/home/jmanning/py/aq_main/aqmain_and_raw_check/raw_data_check/result/Matdata/li_*.csv') # change made after lei Zhao's method was implemented in Aug 2019
+    filenames=glob.glob('/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/classified/*/*/li_*.csv')
+    #print (filenames)
     #mrf=[s for s in filenames if "li_"+sn[2:4] in s]
     #mrf=[s for s in filenames if "li_"+sn in s] # change made 3/13/2019
     #mrf=[s for s in filenames if "li_"+sn[-5:-1] in s] # change made 4/9/2019 to account for some new sn having 6 characters but only four in filenames
@@ -75,9 +101,9 @@ def getlastwifi(sn):
     last_wifi_date='never'
   else:  
     mrf=max(mrf)
-    print mrf
+    #print mrf
     try:
-      mrf=mrf.split('Matdata/')[1] # this gets the last file according to date
+      mrf=mrf.split('/')[-1] # this gets the last file according to date
     except:
       pass
  
@@ -90,10 +116,11 @@ def getlastwifi(sn):
       last_wifi_date=dt(int(mrf[0:4]),int(mrf[4:6]),int(mrf[6:8]),0,0,0).strftime("%b %d,%Y")  
   return last_wifi_date
 
-def getlastfished(vn,mindistfromharbor):
+def getlastfished(vn,mindistfromharbor,df):
    # function to determine when the last date the vessel "reported" away from the dock
    # assuming the dock position is entered in "harborlist.txt" file
-   df=pd.read_csv('/net/pubweb_html/drifter/emolt_ap3_reports.dat',sep=',',header=None) # this file is created during the "getap3.py" run
+   #df=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3_reports.dat',sep=',',header=None) # this file is created during the "getap3.py" run
+   #df2=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/daily_emolt.dat',sep=',',header=None)
    df1=df[df[0]==vn] # this assumes the vessel names in "codes_temp.dat" are exactly the same as those on the AssetLink site but with the "F/V " prefix removed
    if len(df1)>0:
      yorn=[] # yes  or no near a harbor
@@ -115,7 +142,7 @@ def getlastfished(vn,mindistfromharbor):
 
 def gps_compare_JiM(lat,lon,mindistfromharbor): #check to see if the boat is in the harbor derived from Huanxin's "wifipc.py" functions   
     # function returns yes if this position is with "mindistfromharbor" miles of a dock
-    file='/home/jmanning/py/harborlist.txt' # has header line lat, lon, harbor
+    file='/var/www/vhosts/emolt.org/huanxin_ftp/harborlist.txt' # has header line lat, lon, harbor
     df=pd.read_csv(file,sep=',')
     indice_lat=[i for i ,v in enumerate(abs(np.array(df['lat'])-lat)<mindistfromharbor) if v]
     indice_lon=[i for i ,v in enumerate(abs(np.array(df['lon'])-lon)<mindistfromharbor) if v]
@@ -197,7 +224,7 @@ def get_FVCOM_bottom_temp(lati,loni,dtime,layer): # gets modeled temp using GOM3
 #MAIN PROGRAM
 
 # open output html file and write header line
-outfile=open('/net/pubweb_html/drifter/lastfix_temp.html','w')
+outfile=open('/var/www/vhosts/emolt.org/httpdocs/lastfix_temp.html','w')
 #outfile=open('/net/pubweb_html/drifter/lastfix_temp4.html','w')
 #outfile=open('/net/newfish_www/html/nefsc/emolt/lastfix_temp.html','w')
 
@@ -205,7 +232,8 @@ outfile.write('<html><style>.redtext {color: red;}</style>\n')
 outfile.write('<head><script src="https://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>\n')
 outfile.write('<script type="text/javascript" src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>\n')  
 outfile.write('<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">\n')
-outfile.write('<script type="text/javascript"> $(document).ready( function () {$(\'#table_id\').DataTable();} );</script></head>\n')
+#outfile.write('<script type="text/javascript"> $(document).ready( function () {$(\'#table_id\').DataTable();} );</script></head>\n')
+outfile.write('<script type="text/javascript"> $(document).ready( function () {$(\'#table_id\').DataTable({"order":[1,\'desc\']});} );</script></head>\n')
 
 outfile.write('<h3>commercial fishing vessels telemetering realtime bottom temperatures from the Northeast Shelf</h3>\n')
 outfile.write('<table id="table_id" border="1" class="display">\n')
@@ -213,9 +241,12 @@ outfile.write('<thead><tr><th>vessel</th><th>date_last_telemetered</th><th>last_
 outfile.write('<tbody>\n')
 
 # read input file assuming that emolt_ap3.dat has been appended to this at 10, 40 minutes after even hour
-df=pd.read_csv('https://nefsc.noaa.gov/drifter/emolt.dat',sep='\s+',header=None) 
+df=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat',sep='\s+',header=None)
+df_emolt_daily=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3_reports.dat',sep=',',header=None) # this file is created during the "getap3.py" run
+df_rock_daily=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/daily_emolt.dat',sep='  ',header=None) 
+df_daily=df_emolt_daily.append(df_rock_daily)
 #df=pd.read_csv('https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat',sep='\s+',header=None)           # assetlink results and assumes rockblock hauls already appended to AL by "getap3.py" 8/19/2020
-
+var='Bottom_Temperature/BT_'
 # create a datetime for all fixes
 datet=[]
 for k in range(len(df)): # for each fix
@@ -228,7 +259,7 @@ ves=list(set(df[0])) # list of unique vessels numbers
 sumnum=0
 anomaly,moderror,moderror_doppio,moderror_gomofs=[],[],[],[]# intitialize a few variables for appending later
 for j in range(len(ves)): # for each vessel
-  print ves[j]
+  #print ves[j]
   df1=df[df[0]==ves[j]]# gets all the records for this one vessel in new dataframe "df1"
   # added the following 6 lines 29 Mar 2019
   yorn=[] # yes  or no near a harbor
@@ -241,17 +272,18 @@ for j in range(len(ves)): # for each vessel
   ####
   if len(df1)>0:# note in some cases the vessel may have only reported temps from the dock
     [vn,sn,form]=getvesselname(ves[j])#gets vessel name, probe serial number, and fixed_or_mobile for this vessel number
-    print vn
+    print (vn)
     last_wifi_date=getlastwifi(sn)# gets date of last wifi for this serieal number
-    last_fishing_date=getlastfished(vn,mindistfromharbor) 
+    last_fishing_date=getlastfished(vn,mindistfromharbor,df_daily) 
     obst=str(round(c2f(float(df1[14][-1:].values[0]))[0],1)) # last observation for this vessel
-    climt=str(round(c2f(getclim(df1[8][-1:].values[0],df1[7][-1:].values[0],str(int(max(df1.datet).to_pydatetime().strftime('%j')))))[0],1))# climatology for this day based on Melrose
-    print 'looking for NGDC depth'
+    #climt=str(round(c2f(getclim(df1[8][-1:].values[0],df1[7][-1:].values[0],str(int(max(df1.datet).to_pydatetime().strftime('%j')))))[0],1))# climatology for this day based on Melrose
+    climt=str(round(c2f(getclim(df1[8][-1:].values[0],df1[7][-1:].values[0],'',max(df1.datet),var))[0],1))# climatology for this day based on Melrose
+    print ('looking for NGDC depth')
     depth_ngdc=get_depth(df1[7][-1:].values[0],df1[8][-1:].values[0],mindist_allowed)# ngdc bottom depth estimate
     if abs(df1[11][-1:].values[0]-depth_ngdc)/depth_ngdc>0.15:# big difference in observed and NGDC depth
       obst=obst+'*'
     #get FVCOM
-    print 'looking for FVCOM'
+    print ('looking for FVCOM')
     if max(df1.datet).to_pydatetime()>dt.now()-timedelta(days=3): # if within model forecast time period 
       try:
         # JiM modified the "str(round(" prefix on 7/8/2020
@@ -260,18 +292,20 @@ for j in range(len(ves)): # for each vessel
         if abs(float(obst)-float(modt))>maxdiff: #something must be wrong
           modt='nan'
       except:
-        print 'FVCOM is down?'
+        print ('FVCOM is down?')
         modt='nan' # the FVCOM must be down
     else:
       modt='nan'
     # get DOPPIO
     if max(df1.datet).to_pydatetime()>=dt(2017,11,1,0,0,0):
-      print 'looking for DOPPIO'
+      print ('looking for DOPPIO')
       try:
-        modt_doppio=str(round(c2f(doppio_modules.get_doppio(lat=df1[8][-1:].values[0],lon=df1[7][-1:].values[0],depth='bottom',time=max(df1.datet).to_pydatetime()-timedelta(days=4),fortype='temperature'))[0],1))
+        #modt_doppio=str(round(c2f(doppio_modules.get_doppio(lat=df1[8][-1:].values[0],lon=df1[7][-1:].values[0],depth='bottom',time=max(df1.datet).to_pydatetime()-timedelta(days=4),fortype='temperature'))[0],1))
+  
+        modt_doppio=str(round(c2f(doppio_modules.get_doppio_Best(time=max(df1.datet).to_pydatetime()-timedelta(days=4),lat=df1[8][-1:].values[0],lon=df1[7][-1:].values[0],depth='bottom',fortype='temperature'))[0],1))
       except:
         modt_doppio=np.nan
-      print 'looking for GOMOFS'
+      print ('looking for GOMOFS')
       try:
         modt_gomofs=str(round(c2f(gomofs_modules.get_gomofs(max(df1.datet).to_pydatetime()-timedelta(days=0),df1[8][-1:].values[0],df1[7][-1:].values[0],'bottom'))[0],1))
       except:
@@ -287,6 +321,7 @@ for j in range(len(ves)): # for each vessel
          add_color=''
     else:
       add_color=''
+    
     outfile.write('<tr><td'+add_color+'>'+vn+'</td>'+'<td>'+max(df1.datet).strftime("%Y-%m-%d")+'</td><td>'+obst+'</td><td>'+modt+'</td><td>'+str(modt_doppio)+'</td><td>'+str(modt_gomofs)+'</td><td>'+climt+'</td><td>'+str(len(df1))+'</td><td>'+sn+'</td><td>'+last_wifi_date+'</td><td>'+last_fishing_date+'</td></tr>\n')
     #outfile.write('<tr><td'+add_color+'>'+vn+'</td>'+'<td>'+max(df1.datet).strftime("%b %d,%Y")+'</td><td>'+obst+'</td><td>'+modt+'</td><td>'+modt_doppio+'</td><td>coming soon</td><td>'+climt+'</td><td>'+str(len(df1))+'</td><td>'+sn+'</td><td>'+last_wifi_date+'</td><td>'+last_fishing_date+'</td></tr>\n')
     
@@ -300,19 +335,25 @@ for j in range(len(ves)): # for each vessel
     if ~np.isnan(float(modt_gomofs)):
        moderror_gomofs.append(float(obst)-float(modt_gomofs))
 
-outfile.write('<tr><td><b>TOTAL</td><td></td><td></td><td></td><td></td><td></td><td></td><td><b>'+str(sumnum)+'</td><td></td><td></td><td></td></tr>\n')
-outfile.write('</tbody></table>')
-outfile.write('<br><br> * indicates maximum observed depth is more than 15% different from what the bottom depth is at that location (according to NGDC)')
-outfile.write('<br><br> Most recent mean observed minus Melrose-30-year-climatology = '+str(round(np.mean(anomaly),1))+' degF')
-if str(round(np.mean(moderror),1))=='nan':
-  outfile.write('<br><br> Note: FVCOM model is evidently down.')
-else:
-  outfile.write('<br><br> Most recent mean observed minus FVCOM GOM3 forecast model = '+str(round(np.mean(moderror),1))+' degF')
-outfile.write('<br><br> Most recent mean observed minus DOPPIO forecast model = '+str(round(np.mean(moderror_doppio),1))+' degF')
-outfile.write('<br><br> Most recent mean observed minus GOMOFS forecast model = '+str(round(np.mean(moderror_gomofs),1))+' degF')
-outfile.write('<br><br> Note: Vessels highlighted in red may require some attention.')
-outfile.write('<br><br> Note: To see a map of the last month of observations, click <a href=''http://studentdrifters.org/huanxin/telemetry.html''>here</a>.')
-outfile.close()
-os.system('cp /net/pubweb_html/drifter/lastfix_temp.html /net/pubweb_html/drifter/lastfix.html')# changed from "mv" to "cp" on 4/9/2019
-#os.system('cp /net/newfish_www/html/nefsc/emolt/lastfix_temp.html /net/newfish_www/html/nefsc/emolt/lastfix.html')# changed from "mv" to "cp" on 4/9/2019
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    #foo = np.nanmean(x, axis=1)
+    
+    outfile.write('<tr><td><b>TOTAL</td><td></td><td></td><td></td><td></td><td></td><td></td><td><b>'+str(sumnum)+'</td><td></td><td></td><td></td></tr>\n')
+    outfile.write('</tbody></table>')
+    outfile.write('<br><br> * indicates maximum observed depth is more than 15% different from what the bottom depth is at that location (according to NGDC)')
+    outfile.write('<br><br> Most recent mean observed minus Melrose-30-year-climatology = '+str(round(np.mean(anomaly),1))+' degF')
+    if str(round(np.mean(moderror),1))=='nan':
+      outfile.write('<br><br> Note: FVCOM model is evidently down.')
+    else:
+      outfile.write('<br><br> Most recent mean observed minus FVCOM GOM3 forecast model = '+str(round(np.mean(moderror),1))+' degF')
+    outfile.write('<br><br> Most recent mean observed minus DOPPIO forecast model = '+str(round(np.mean(moderror_doppio),1))+' degF')
+    outfile.write('<br><br> Most recent mean observed minus GOMOFS forecast model = '+str(round(np.mean(moderror_gomofs),1))+' degF')
+    outfile.write('<br><br> Note: Vessels highlighted in red may require some attention.')
+    outfile.write('<br><br> Note: To see a map of the last month of observations, click <a href=''http://emolt.org/telemetry.html''>here</a>.')
+    outfile.close()
+    os.system('cp /var/www/vhosts/emolt.org/httpdocs/lastfix_temp.html /var/www/vhosts/emolt.org/httpdocs/lastfix.html')# changed from "mv" to "cp" on 4/9/2019
+    #os.system('cp /net/newfish_www/html/nefsc/emolt/lastfix_temp.html /net/newfish_www/html/nefsc/emolt/lastfix.html')# changed from "mv" to "cp" on 4/9/2019
 

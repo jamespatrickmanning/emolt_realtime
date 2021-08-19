@@ -32,6 +32,7 @@ import sys
 import zlconversions as zl
 from datetime import datetime,timedelta
 from pylab import mean, std
+from datetime import date
 import conda
 conda_file_dir = conda.__file__
 conda_dir = conda_file_dir.split('lib')[0]
@@ -93,6 +94,7 @@ def weekly_times(name,tstart,tend):
     acording to this information count how often the fisherman fishing'''
     #path='https://nefsc.noaa.gov/drifter/emolt_ap3_reports.dat'
     path='https://apps-nefsc.fisheries.noaa.gov/drifter/emolt_ap3_reports.dat'
+    path='http://emolt.org/emoltdata/emolt_ap3_reports.dat'
     #print('reading reports ... standby')
     df=pd.read_csv(path,sep=',',names=['name','time','lat','lon'])
     #print('finished reading emolt_ap3_reports file')
@@ -386,7 +388,7 @@ def classify_by_boat(indir,outdir,pstatus):
                             print(file)
                             print("please check the data of telemetry status!")
 
-def classify_tele_raw_by_boat(input_dir,path_save,telemetry_status,start_time,end_time,telemetry_path='https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat',dpi=300):
+def classify_tele_raw_by_boat(input_dir,path_save,telemetry_status,start_time,end_time,telemetry_path='http://emolt.org/emoltdata/emolt.dat',dpi=300):
     """
     the type of start tiem and end time is str :'%Y-%m-%d'
     match the file and telementy.
@@ -767,7 +769,7 @@ def format_lat_lon(data):
     return data
 
 
-def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emolt_raw_save,lack_data,emolt_QCed_df_save,telemetry_path='https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat',\
+def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emolt_raw_save,lack_data,emolt_QCed_df_save,telemetry_path='http://emolt.org/emoltdata/emolt.dat',\
                    accept_minutes_diff=20,acceptable_distance_diff=2,dpi=300,Ttdepth=5):
     """
     start time and end time is utc time, and the format is datetime.datetime
@@ -782,6 +784,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
               'min_diff_depth','average_diff_depth','max_diff_temp','min_diff_temp',\
               'average_diff_temp','sum_diff_depth','sum_diff_temp','min_lat','max_lat','min_lon','max_lon']
     record_file_df=telemetrystatus_df.loc[:,['Boat','Vessel#']].reindex(columns=rcolumns,fill_value=None)
+    #print (record_file_df)
     #transfer the time format of string to datetime 
 #    start_time_local=datetime.strptime(start_time,'%Y-%m-%d')
 #    end_time_local=datetime.strptime(end_time,'%Y-%m-%d')
@@ -797,6 +800,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
         if file[len(file)-4:]=='.csv':
             file_lists.append(file)
     #download the data of telementry
+    print (telemetry_path)
     tele_df=read_telemetry(telemetry_path)
     #screen out the data of telemetry in interval
     valuable_tele_df=pd.DataFrame(data=None,columns=['vessel_n','esn','time','lon','lat','depth','temp'])#use to save the data during start time and end time
@@ -829,8 +833,11 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
     #write 'time','mean_temp','mean_depth' of the telementry to tele_dict            
     for i in valuable_tele_df.index:  #valuable_tele_df is the valuable telemetry data during start time and end time 
         for j in telemetrystatus_df.index:
+            
             if int(valuable_tele_df['vessel_n'][i].split('_')[1])==telemetrystatus_df['Vessel#'][j]:
+                
                 if float(valuable_tele_df['depth'][i])<Ttdepth:   #Ttdepth means telemetered minimum standard depth
+                    
                     continue
                 #count the numbers by boats
                 if record_file_df['tele_num'].isnull()[j]:
@@ -855,8 +862,9 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
                 tele_dict[telemetrystatus_df['Boat'][j]]=tele_dict[telemetrystatus_df['Boat'][j]].append(pd.DataFrame(data=[[valuable_tele_df['time'][i],\
                          float(valuable_tele_df['temp'][i]),float(valuable_tele_df['depth'][i]),float(valuable_tele_df['lat'][i]),float(valuable_tele_df['lon'][i])]],\
                             columns=['time','mean_temp','mean_depth','mean_lat','mean_lon']).iloc[0],ignore_index=True)
+                
     for file in file_lists: # loop raw files   
-         #print(file)
+         
          try:
              fpath,fname=os.path.split(file)  #get the file's path and name
              #match rawdata and telementry data
@@ -865,23 +873,29 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
              time_gmt=datetime.strptime(time_str,"%Y%m%d %H%M%S")
              if time_gmt<start_time or time_gmt>end_time:
                  continue
+             
             # now, read header and data of every file  
              header_df=zl.nrows_len_to(file,2,name=['key','value']) #only header 
              data_df=zl.skip_len_to(file,2) #only data
+             #print (fpath.split('/')[8])
+             
             #caculate the mean temperature and depth of every file
             #value_data_df=data_df.loc[(data_df['Depth(m)']>0.85*mean(data_df['Depth(m)']))]  #filter the data
              for n in range(len(telemetrystatus_df)):#selecte the Boat belongs to Fixed or Mobile
                 #if telemetrystatus_df['Boat'][n] == fpath.split('\\')[8]:
                 #if telemetrystatus_df['Boat'][n] == fpath.split('\\')[5]: 
-                if telemetrystatus_df['Boat'][n] == fpath.split('\\')[7]: # made this change 12/1/2020 when I noticed it wasn't fiinding any raw files
+                if telemetrystatus_df['Boat'][n] == fpath.split('/')[8]: # made this change 12/1/2020 when I noticed it wasn't fiinding any raw files
+                    #print (telemetrystatus_df['Fixed vs. Mobile'][n])
                     if telemetrystatus_df['Fixed vs. Mobile'][n] == 'Mobile':
                         value_data_df=data_df.loc[(data_df['Depth(m)']>0.85*max(data_df['Depth(m)']))]  #filter the data
                     else:
                         value_data_df=data_df.loc[(data_df['Depth(m)']>0.95*max(data_df['Depth(m)']))]  #filter the data
+             
              value_data_df=value_data_df.iloc[7:]   #delay several minutes to let temperature sensor record the real bottom temp
              value_data_df=value_data_df.loc[(value_data_df['Temperature(C)']>mean(value_data_df['Temperature(C)'])-3*std(value_data_df['Temperature(C)'])) & \
                                             (value_data_df['Temperature(C)']<mean(value_data_df['Temperature(C)'])+3*std(value_data_df['Temperature(C)']))]  #Excluding gross error
              value_data_df.index = range(len(value_data_df))  #reindex
+             #print (value_data_df)
              for i in range(len(value_data_df)):
                 value_data_df['Lat'][i],value_data_df['Lon'][i]=cv.dm2dd(value_data_df['Lat'][i],value_data_df['Lon'][i])
              min_lat=min(value_data_df['Lat'].values)
@@ -892,11 +906,12 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
              mean_lon=str(round(mean(value_data_df['Lon'].values),4)) 
              #mean_temp=str(round(mean(value_data_df['Temperature(C)'][1:len(value_data_df)]),2))
              #mean_temp=str(int(round(np.mean(value_data_df['Temperature(C)'][1:len(value_data_df)]),2)*100))
-             mean_temp=str(int(round(np.mean(value_data_df['Temperature(C)'][0:-1]),2)*100))
-             mean_temp=str(int(round(np.mean(value_data_df['Temperature(C)'][0:-1]),2)))# rid of the "*100" on 1 Dec 2020
+             #mean_temp=str(int(round(np.mean(value_data_df['Temperature(C)'][0:-1]),2)*100))
+             mean_temp=str(round(np.mean(value_data_df['Temperature(C)'][0:-1]),2))
+             #mean_temp=str(int(round(np.mean(value_data_df['Temperature(C)'][0:-1]),2)))# rid of the "*100" on 1 Dec 2020
              #std_temp=str(round(std(value_data_df['Temperature(C)'][1:len(value_data_df)]),2))  # standard deviation of bottom temps
              #std_temp=str(int(round(np.std(value_data_df['Temperature(C)'][1:len(value_data_df)]),2)*100))
-             std_temp=str(int(round(np.std(value_data_df['Temperature(C)'][0:-1]),2)*100))
+             std_temp=str(round(np.std(value_data_df['Temperature(C)'][0:-1]),3))
              mean_depth=str(abs(int(round(mean(value_data_df['Depth(m)'].values))))).zfill(3)   #caculate the mean depth
              range_depth=str(abs(int(round(max(value_data_df['Depth(m)'].values)-min(value_data_df['Depth(m)'].values))))).zfill(3) #caculate the mean depth
              for i in header_df.index:#get the vessel number of every file
@@ -1017,6 +1032,8 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
             os.makedirs(path_save)
     record_file_df.to_csv(os.path.join(path_save,start_time.strftime('%Y%m%d')+'_'+end_time.strftime('%Y%m%d')+'_statistics.csv'),index=0)
     record_file_df.to_csv(os.path.join(emolt_QCed_df_save,'statistics.csv'),index=0)
+    record_file_df.to_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/statistics.csv')
+    
     print('starting to create dictionary')
     dict={}
     dict['raw_dict']=raw_dict
@@ -1039,7 +1056,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
             if not os.path.exists(emolt_raw_save):
                 os.makedirs(emolt_raw_save)
             new_emolt_raw_d.index=range(len(new_emolt_raw_d))
-            new_emolt_raw_d.to_csv(os.path.join(emolt_raw_save,'emolt_raw.csv'))
+    new_emolt_raw_d.to_csv(os.path.join(emolt_raw_save,'emolt_raw.csv'))
     return dict
           
 
@@ -1125,7 +1142,7 @@ def statistic(input_dir,path_save,telemetry_status,start_time,end_time,telemetry
                                                    
     #save the record file
     
-    record_file_df.to_csv(path_save+'\\'+start_time.strftime('%Y%m%d')+'_'+end_time.strftime('%Y%m%d')+'_statistics.csv',index=0) 
+    record_file_df.to_csv(path_save+'/'+start_time.strftime('%Y%m%d')+'_'+end_time.strftime('%Y%m%d')+'_statistics.csv',index=0) 
 
 
 
@@ -1258,14 +1275,35 @@ def to_list(lat,lon):
 
 def emolt_no_telemetry_df(tele_df,emolt_raw_df,emolt_no_telemetry_df):
     """compare with emolt.dat to get emolt_no_telemetry_df"""
+    #print (len(emolt_raw_df))
+    #todays_date = date.today()
+    #today_year=todays_date.year
+    #last_year=today_year-2
+    df_datetime=[]
+    for j in tele_df.index:
+        a=str(tele_df['year'].iloc[j])+'-'+str(tele_df['month'].iloc[j])+'-'+str(tele_df['day'].iloc[j])+' '+str(tele_df['Hours'].iloc[j])+':'+str(tele_df['minates'].iloc[j])+':'+'00'
+        b=datetime.strptime(a,'%Y-%m-%d %H:%M:%S')
+        df_datetime.append(b.strftime('%Y-%m-%d %H:%M:%S'))
+        
+    tele_df['datetime']=df_datetime 
+    
+    min_date=emolt_raw_df['datet'].min()
+    max_date=emolt_raw_df['datet'].max()
+    tele_df_recent=tele_df[tele_df['datetime']>=min_date]
+    tele_df_recent=tele_df_recent[tele_df_recent['datetime']<=max_date]
+
+  
     for i in emolt_raw_df.index:
+    #for i in tele_df_recent.index:
+        #print (i)
         time_range=timedelta(seconds=600)#set a time range for filtering out the data that wo don't need
         emolt_raw_df['vessel'][i]='Vessel_'+str(emolt_raw_df['vessel'][i])#set the format of emolt_raw_df['vessel'] likes that tele_df['vessel_n']
-        for j in tele_df.index:
+        for j in tele_df_recent.index:
+            #print (j)
             emolt_time_str=str(tele_df['year'].iloc[j])+'-'+str(tele_df['month'].iloc[j])+'-'+str(tele_df['day'].iloc[j])+' '+str(tele_df['Hours'].iloc[j])+':'+str(tele_df['minates'].iloc[j])+':'+'00'
             emolt_time=datetime.strptime(emolt_time_str,'%Y-%m-%d %H:%M:%S')
-            if int(tele_df['year'][-10:-9])==int(datetime.now().year):# if you want to compare all years data,you need to close there and delet year_now
-                if emolt_raw_df['vessel'][i] in tele_df['vessel_n'].values:
+            #if int(tele_df['year'][-10:-9])==int(datetime.now().year):# if you want to compare all years data,you need to close there and delet year_now
+            if emolt_raw_df['vessel'][i] in tele_df['vessel_n'].values:
                     if emolt_raw_df['vessel'][i]==tele_df['vessel_n'][j]:
                         #if datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S").year==int(tele_df['year'][j]) and datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S").month==int(tele_df['month'][j]):
                             #if datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S").day==int(tele_df['day'][j]):
@@ -1278,10 +1316,11 @@ def emolt_no_telemetry_df(tele_df,emolt_raw_df,emolt_no_telemetry_df):
                         if emolt_time-time_range<=datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S")<=emolt_time+time_range:
                              #emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=False)
                              emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=True)
+                             #print ('add'+str(emolt_raw_df.iloc[i]))
                              #emolt_no_telemetry_df.index=range(len(emolt_no_telemetry_df))
                         #drop the data had wrong position,but raw data is fine
-                             if not tele_df['lat'][j]-1<=emolt_raw_df['lat'][i]<=tele_df['lat'][j]+1 or tele_df['lon'][j]+1<=emolt_raw_df['lon'][i]<=tele_df['lon'][j]-1:
-                                emolt_no_telemetry_df=emolt_no_telemetry_df.drop([len(emolt_no_telemetry_df)-1])
+                             #if not tele_df['lat'][j]-1<=emolt_raw_df['lat'][i]<=tele_df['lat'][j]+1 or tele_df['lon'][j]-1<=emolt_raw_df['lon'][i]<=tele_df['lon'][j]+1: #comment the two lines 6/15/2021 to avoid bad location
+                                #emolt_no_telemetry_df=emolt_no_telemetry_df.drop([len(emolt_no_telemetry_df)-1])
     return emolt_no_telemetry_df
 def subtract(df1,df2,columns):
     '''df1 subtracts df2,get the rest of df1'''

@@ -152,24 +152,27 @@ def upload_weely(Host, UserName, Pswd,remot_dir, local_folder):
 def get_emolt_no_telemetry(path, emolt_raw_path, emolt_QCed_df_save):
     '''compare emolt.dat and emolt_raw,get emolt_no_telemetry'''
     tele_df=rdm.read_telemetry(path)#get emolt.dat
+    print ('get tele_df')
     tele_df=tele_df[0:-2]
     emolt_raw_df=pd.read_csv(emolt_raw_path,index_col=0)#get emolt_raw.csv
     #create a DataFrame for store emolt_no_telemetry
     emolt_no_telemetry_DF=pd.DataFrame(data=None,columns=['vessel','datet','lat','lon','depth','depth_range','hours','mean_temp','std_temp'])
     #compare with emolt_raw.csv and emolt.dat to get emolt_no_telemetry.csv
-    emolt_no_telemetry_result=rdm.emolt_no_telemetry_df(tele_df=tele_df,emolt_raw_df=emolt_raw_df,emolt_no_telemetry_df=emolt_no_telemetry_DF)
+    print ('get emolt_no_telemetry_Df')
+    emolt_no_telemetry_result=rdm.emolt_no_telemetry_df(tele_df=tele_df,emolt_raw_df=emolt_raw_df,emolt_no_telemetry_df=emolt_no_telemetry_DF)# this emolt_no_telemetry_result is the data both in tele and raw
     #according to columns,drop_duplicates
+    print ('got emolt_no_telemetry_result')
     emolt_no_telemetry_result=emolt_no_telemetry_result.drop_duplicates(['vessel','lat','lon'])
     #get the rest of emolt_raw_df,it's emolt_no_telemetry
     emolt_no_telemetry_result=rdm.subtract(df1=emolt_raw_df,df2=emolt_no_telemetry_result,columns=['vessel','datet','lat','lon','depth','depth_range','hours','mean_temp','std_temp'])
-    emolt_no_telemetry_result['std_temp'] = emolt_no_telemetry_result['std_temp'].map(lambda x: '{0:.2f}'.format(float(x)/100))
-    emolt_no_telemetry_result['mean_temp'] = emolt_no_telemetry_result['mean_temp'].map(lambda x: '{0:.2f}'.format(float(x)/100))
+    #emolt_no_telemetry_result['std_temp'] = emolt_no_telemetry_result['std_temp'].map(lambda x: '{0:.2f}'.format(float(x)/100))
+    #emolt_no_telemetry_result['mean_temp'] = emolt_no_telemetry_result['mean_temp'].map(lambda x: '{0:.3f}'.format(float(x)/1000))
     #save emolt_no_telemetry.csv
     if not os.path.exists(emolt_QCed_df_save):
         os.makedirs(emolt_QCed_df_save)
     #append every week
     emolt_no_telemetry=pd.read_csv(os.path.join(emolt_QCed_df_save,'emolt_no_telemetry.csv'),index_col=0)
-    emolt_no_telemetry=emolt_no_telemetry.append(emolt_no_telemetry_result)
+    emolt_no_telemetry=emolt_no_telemetry.append(emolt_no_telemetry_result) # the raw data( which has no telemetry data to match)
     emolt_no_telemetry=emolt_no_telemetry.drop_duplicates(subset=['vessel','lat','lon'], keep='first')
     emolt_no_telemetry=emolt_no_telemetry.sort_values(by=['datet'])
     emolt_no_telemetry.index=range(len(emolt_no_telemetry))
@@ -184,7 +187,9 @@ def main():
     realpath=os.path.dirname(os.path.abspath(__file__))
     #parameterpath=realpath.replace('py','parameter')
     output_path=realpath.replace('py','result')  #use to save the data 
-    picture_save=output_path+'\\stats\\' #use to save the picture
+    output_path='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/result/'
+    picture_save=output_path+'stats/' #use to save the picture
+    input_path='/var/www/vhosts/emolt.org/huanxin_ftp/weekly_project/checked'
     # emolt='https://www.nefsc.noaa.gov/drifter/emolt.dat' #this is download from https://www.nefsc.noaa.gov/drifter/emolt.dat, 
     # emolt = 'https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat'
     emolt = 'https://nefsc.noaa.gov/drifter/emolt_ap3.dat'
@@ -209,23 +214,27 @@ def main():
     
     # below hardcodes is the informations to upload local data to student drifter. 
     end_time=datetime.now().replace(hour=0,minute=0,second=0,microsecond=0)#-timedelta(days=1)#input local time,in match_tele_raw will change to UTCtime
-    start_time=end_time-timedelta(weeks=1)
+    start_time=end_time-timedelta(weeks=1.03) # program run 4 hours,1.03=4 hours
+    #end_time=start_time+timedelta(weeks=10)
+    #print (end_time)
+    #print (start_time)
     ############################################## Main #####################################
     if not os.path.exists(picture_save):
         os.makedirs(picture_save)
     #print('match telemetered and raw data!')
     #match the telementry data with raw data, calculate the numbers of successful matched and the differnces of two data. finally , use the picture to show the result.
-    dict=rdm.match_tele_raw(os.path.join(output_path,'checked'),path_save=os.path.join(picture_save,'statistics'),telemetry_path=emolt,telemetry_status=telemetry_status,\
+    dict=rdm.match_tele_raw(input_path,path_save=os.path.join(picture_save,'statistics'),telemetry_path=emolt,telemetry_status=telemetry_status,\
                             emolt_raw_save=emolt_raw_save,start_time=start_time,end_time=end_time,dpi=500,lack_data=lack_data_path,emolt_QCed_df_save=emolt_QCed_df_save)
-    #print('finished match_tele_raw')
+    print('finished match_tele_raw')
     emolt_no_telemetry_df=get_emolt_no_telemetry(path, emolt_raw_path, emolt_QCed_df_save)
-    #print('finished get_emolt_no_telemetry')
+    print('finished get_emolt_no_telemetry')
     emolt_no_telemetry_df.to_csv(os.path.join(emolt_QCed_df_save,'emolt_no_telemetry.csv'))
+    emolt_no_telemetry_df.to_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_no_telemetry.csv')
     df_good=dfgood(emolt_QCed_path, depth_ok, min_miles_from_dock, temp_ok, fraction_depth_error, mindist_allowed, emolt_no_telemetry=emolt_no_telemetry_df)
-    #print('finished dfgood')
+    print('finished dfgood')
     df_good.to_csv(os.path.join(emolt_QCed_df_save,'emolt_QCed_telemetry_and_wified.csv'))
     df_good.to_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed_telemetry_and_wified.csv')
-    #print('match telemetered and raw data finished!')
+    print('match telemetered and raw data finished!')
     
 '''
     raw_d=pd.DataFrame(data=None,columns=['time','filename','mean_temp','mean_depth','mean_lat','mean_lon'])
