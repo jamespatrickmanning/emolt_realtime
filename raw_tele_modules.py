@@ -779,6 +779,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
 
     #read the file of the telementry_status
     telemetrystatus_df=read_telemetrystatus(telemetry_status)
+    #print  (telemetrystatus_df)
     #st the record file use to write minmum maxmum and average of depth and temperature,the numbers of file, telemetry and successfully matched
     rcolumns=['Boat','Vessel#','matched_number','file_number','tele_num','fish_times','max_diff_depth',\
               'min_diff_depth','average_diff_depth','max_diff_temp','min_diff_temp',\
@@ -800,7 +801,8 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
         if file[len(file)-4:]=='.csv':
             file_lists.append(file)
     #download the data of telementry
-    print (telemetry_path)
+    #print (telemetry_path)
+   
     tele_df=read_telemetry(telemetry_path)
     #screen out the data of telemetry in interval
     valuable_tele_df=pd.DataFrame(data=None,columns=['vessel_n','esn','time','lon','lat','depth','temp'])#use to save the data during start time and end time
@@ -830,7 +832,8 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
         raw_dict[i]=pd.DataFrame(data=None,columns=['time','filename','mean_temp','mean_depth','mean_lat','mean_lon'])
         tele_dict[i]=pd.DataFrame(data=None,columns=['time','mean_temp','mean_depth','mean_lat','mean_lon'])
         emolt_raw_dict[i]=pd.DataFrame(data=None,columns=['vessel','datet','lat','lon','depth','depth_range','hours','mean_temp','std_temp'])
-    #write 'time','mean_temp','mean_depth' of the telementry to tele_dict            
+    #write 'time','mean_temp','mean_depth' of the telementry to tele_dict   
+    #print  (emolt_raw_dict)        
     for i in valuable_tele_df.index:  #valuable_tele_df is the valuable telemetry data during start time and end time 
         for j in telemetrystatus_df.index:
             
@@ -871,6 +874,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
              time_str=fname.split('.')[0].split('_')[2]+' '+fname.split('.')[0].split('_')[3]
              #GMT time to local time of file
              time_gmt=datetime.strptime(time_str,"%Y%m%d %H%M%S")
+             
              if time_gmt<start_time or time_gmt>end_time:
                  continue
              
@@ -940,6 +944,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
                                 break
              #write the data of raw file to dict
              for i in telemetrystatus_df.index:
+                #print(telemetrystatus_df['Vessel#'][i],vessel_number)
                 if telemetrystatus_df['Vessel#'][i]==vessel_number:                                                                  #time_local to time_gmt
                         raw_dict[telemetrystatus_df['Boat'][i]]=raw_dict[telemetrystatus_df['Boat'][i]].append(pd.DataFrame(data=[[time_gmt,\
                                               fname,float(mean_temp),float(mean_depth),float(mean_lat),float(mean_lon)]],\
@@ -1040,6 +1045,7 @@ def match_tele_raw(input_dir,path_save,telemetry_status,start_time,end_time,emol
     dict['tele_dict']=tele_dict
     dict['record_file_df']=record_file_df
     dict['emolt_raw_dict']=emolt_raw_dict
+    #print (emolt_raw_dict)
     #according to new_record_file_df['Boat'] classify every boat's emolt_raw data,output DataFrame as 'emolt_raw.csv'.
     new_emolt_raw_dict=dict['emolt_raw_dict']
     new_record_file_df=dict['record_file_df']
@@ -1156,7 +1162,8 @@ def read_telemetrystatus(path_name):
             data_line_number=i
             break
     #read the data about "telemetry_status.csv"
-    telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)
+    #telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)
+    telemetrystatus_df=pd.read_csv(path_name)
     as_list=telemetrystatus_df.columns.tolist()
     idex=as_list.index('vessel (use underscores)')
     as_list[idex]='Boat'
@@ -1280,19 +1287,27 @@ def emolt_no_telemetry_df(tele_df,emolt_raw_df,emolt_no_telemetry_df):
     #today_year=todays_date.year
     #last_year=today_year-2
     df_datetime=[]
-    for j in tele_df.index:
-        a=str(tele_df['year'].iloc[j])+'-'+str(tele_df['month'].iloc[j])+'-'+str(tele_df['day'].iloc[j])+' '+str(tele_df['Hours'].iloc[j])+':'+str(tele_df['minates'].iloc[j])+':'+'00'
+    #print (tele_df)
+    for x in tele_df.index:
+        a=str(tele_df['year'].iloc[x])+'-'+str(tele_df['month'].iloc[x])+'-'+str(tele_df['day'].iloc[x])+' '+str(tele_df['Hours'].iloc[x])+':'+str(tele_df['minates'].iloc[x])+':'+'00'
         b=datetime.strptime(a,'%Y-%m-%d %H:%M:%S')
         df_datetime.append(b.strftime('%Y-%m-%d %H:%M:%S'))
         
     tele_df['datetime']=df_datetime 
     
+    #print (emolt_raw_df)
     min_date=emolt_raw_df['datet'].min()
+    min_date=(datetime.strptime(min_date,"%Y-%m-%d %H:%M:%S")-timedelta(seconds=1600)).strftime('%Y-%m-%d %H:%M:%S')
     max_date=emolt_raw_df['datet'].max()
+    max_date=(datetime.strptime(max_date,"%Y-%m-%d %H:%M:%S")+timedelta(seconds=1600)).strftime('%Y-%m-%d %H:%M:%S')
+    #print (min_date)
+    #print (max_date)
     tele_df_recent=tele_df[tele_df['datetime']>=min_date]
     tele_df_recent=tele_df_recent[tele_df_recent['datetime']<=max_date]
 
-  
+    #print (tele_df_recent)
+    #print (emolt_raw_df)
+    
     for i in emolt_raw_df.index:
     #for i in tele_df_recent.index:
         #print (i)
@@ -1302,6 +1317,7 @@ def emolt_no_telemetry_df(tele_df,emolt_raw_df,emolt_no_telemetry_df):
             #print (j)
             emolt_time_str=str(tele_df['year'].iloc[j])+'-'+str(tele_df['month'].iloc[j])+'-'+str(tele_df['day'].iloc[j])+' '+str(tele_df['Hours'].iloc[j])+':'+str(tele_df['minates'].iloc[j])+':'+'00'
             emolt_time=datetime.strptime(emolt_time_str,'%Y-%m-%d %H:%M:%S')
+            #emolt_time=tele_df['datetime'].iloc[j]
             #if int(tele_df['year'][-10:-9])==int(datetime.now().year):# if you want to compare all years data,you need to close there and delet year_now
             if emolt_raw_df['vessel'][i] in tele_df['vessel_n'].values:
                     if emolt_raw_df['vessel'][i]==tele_df['vessel_n'][j]:
@@ -1313,14 +1329,19 @@ def emolt_no_telemetry_df(tele_df,emolt_raw_df,emolt_no_telemetry_df):
                                 #if emolt_time-time_range<=datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S")<=emolt_time+time_range:
                                     #emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=False)
                         #else:
-                        if emolt_time-time_range<=datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S")<=emolt_time+time_range:
-                             #emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=False)
-                             emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=True)
+                        if (emolt_time-time_range)<=datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S"):
+                            if datetime.strptime(emolt_raw_df['datet'][i],"%Y-%m-%d %H:%M:%S")<=(emolt_time+time_range):
+                                
+                                #emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=False)
+                                emolt_no_telemetry_df=emolt_no_telemetry_df.append(emolt_raw_df.iloc[i],ignore_index=True)
+                       
+                             
                              #print ('add'+str(emolt_raw_df.iloc[i]))
                              #emolt_no_telemetry_df.index=range(len(emolt_no_telemetry_df))
                         #drop the data had wrong position,but raw data is fine
                              #if not tele_df['lat'][j]-1<=emolt_raw_df['lat'][i]<=tele_df['lat'][j]+1 or tele_df['lon'][j]-1<=emolt_raw_df['lon'][i]<=tele_df['lon'][j]+1: #comment the two lines 6/15/2021 to avoid bad location
                                 #emolt_no_telemetry_df=emolt_no_telemetry_df.drop([len(emolt_no_telemetry_df)-1])
+    #print (emolt_no_telemetry_df)
     return emolt_no_telemetry_df
 def subtract(df1,df2,columns):
     '''df1 subtracts df2,get the rest of df1'''

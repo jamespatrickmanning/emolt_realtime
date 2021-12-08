@@ -136,7 +136,8 @@ def read_telemetrystatus(path_name):
             data_line_number=i
             break
     #read the data about "telemetry_status.csv"
-    telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)
+    #telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)
+    telemetrystatus_df=pd.read_csv(path_name)
     as_list=telemetrystatus_df.columns.tolist()
     idex=as_list.index('vessel (use underscores)')
     as_list[idex]='Boat'
@@ -325,7 +326,7 @@ if a==1:
     #hardcode
     filepathread='/var/www/vhosts/emolt.org/httpdocs/emoltdata/dictionary.json'
     path_save='/var/www/vhosts/emolt.org/httpdocs/emoltdata/'
-    telemetry_status='/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv'
+    telemetry_status='http://www.emolt.org/emoltdata/telemetry_status.csv'
     emolt_QCed_df_save='/var/www/vhosts/emolt.org/httpdocs/'
     Host = '66.114.154.52'
     UserName = 'mingchaossh'

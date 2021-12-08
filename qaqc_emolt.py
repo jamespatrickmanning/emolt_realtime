@@ -135,7 +135,7 @@ for k in range(len(df)):
     flag.append(5)
   else:
     flag.append(0)# good data
-#print (str(sum(num==1 for num in flag))+' hauls near dock')
+#print (str(sum(num==1 for num in flag))+' hauls near dock')1
 #print (str(sum(num==2 for num in flag))+' hauls with bad temp data')
 #print (str(sum(num==3 for num in flag))+' hauls with depth out of acceptable range = ',depth_ok,' meters')
 #print (str(sum(num==4 for num in flag))+' hauls with depth not within ',fraction_depth_error,' of NGDC depth')

@@ -67,7 +67,8 @@ def read_telemetrystatus(path_name):
             data_line_number=i
             break
     #read the data about "telemetry_status.csv"
-    telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)
+    #telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)
+    telemetrystatus_df=pd.read_csv(path_name)
     as_list=telemetrystatus_df.columns.tolist()
     idex=as_list.index('vessel (use underscores)')
     as_list[idex]='Boat'
@@ -201,10 +202,12 @@ def classify_by_boat(start_time_button,telemetry_status,start_time,end_time,dict
                         gmf_temp = GOMOFS[0] 
                         gmf_depth = GOMOFS[1]
                         #print('GOMOFS_zl_fitting:')   
+                    #print ('gomfs finished')
                 except KeyboardInterrupt:
                     sys.exit()
                 except:
                     gmf_temp,gmf_depth = np.nan,np.nan
+                    #print ('gomfs is nan')
                     #print('GOMOFS')
                 try:
                     #FV_temp,FV_depth=mm.get_FVCOM_temp(latp=latpt,lonp=lonpt,dtime=ptime,depth=depthpt,fortype='tempdepth')

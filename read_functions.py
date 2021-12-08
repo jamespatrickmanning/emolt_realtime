@@ -16,17 +16,33 @@ def screen_emolt(start_time,end_time,path):
         start_time: start time, the format is datetime.datetime
         end_time: end time, the format is datetime.datetime
         path: the address of emolt data'''
-    tele_df=read_telemetry(path)  # get the dataframe of storing emolt data
     valuable_tele_df=pd.DataFrame(data=None,columns=['vessel_n','esn','time','lon','lat','depth','temp'])#use to save the emolt data during start time and end time
-    for i in tele_df.index:  #loop every line in dataframe
-        tele_time_str=str(tele_df['year'].iloc[i])+'-'+str(tele_df['month'].iloc[i])+'-'+str(tele_df['day'].iloc[i])+' '+str(tele_df['Hours'].iloc[i])+':'+str(tele_df['minates'].iloc[i])+':'+'00'# create the string of time
-        tele_time=datetime.strptime(tele_time_str,'%Y-%m-%d %H:%M:%S')  # covert the time string to the datetime.datetime
-        if start_time<=tele_time<end_time:  #judge the time whether during the start time and the end time
-            valuable_tele_df=valuable_tele_df.append(pd.DataFrame(data=[[tele_df['vessel_n'][i],tele_df['esn'][i],tele_time,tele_df['lon'][i],tele_df['lat'][i],\
-                                                                         tele_df['depth'][i],tele_df['rangedepth'][i],tele_df['timerange'][i],tele_df['temp'][i],tele_df['stdtemp'][i]]],\
-                                                                        columns=['vessel_n','esn','time','lon','lat','depth','rangedepth','timerange','temp','stdtemp']))  # storing worthy data
-    valuable_tele_df.index=range(len(valuable_tele_df))  #reindex
-    return valuable_tele_df
+    if 'QC' or 'no_telemetry' in path:
+        tele_df=read_telemetryQC(path)  # get the dataframe of storing emolt data
+        for i in tele_df.index:  #loop every line in dataframe
+    
+            #tele_time_str=str(tele_df['year'].iloc[i])+'-'+str(tele_df['month'].iloc[i])+'-'+str(tele_df['day'].iloc[i])+' '+str(tele_df['Hours'].iloc[i])+':'+str(tele_df['minates'].iloc[i])+':'+'00'# create the string of time
+            #tele_time=tele_df['datet'].iloc[i]
+            tele_time=datetime.strptime(tele_df['datet'].iloc[i],'%Y-%m-%d %H:%M:%S') 
+            if start_time<=tele_time<end_time:  #judge the time whether during the start time and the end time
+                valuable_tele_df=valuable_tele_df.append(pd.DataFrame(data=[[tele_df['vessel'][i],tele_time,tele_df['lon'][i],tele_df['lat'][i],\
+                                                                             tele_df['depth'][i],tele_df['depth_range'][i],tele_df['hours'][i],tele_df['mean_temp'][i],tele_df['std_temp'][i]]],\
+                                                                            columns=['vessel_n','time','lon','lat','depth','rangedepth','timerange','temp','stdtemp']))  # storing worthy data
+        valuable_tele_df.index=range(len(valuable_tele_df))  #reindex        
+        return valuable_tele_df
+    else:
+        tele_df=read_telemetry(path)
+        #valuable_tele_df=pd.DataFrame(data=None,columns=['vessel_n','esn','time','lon','lat','depth','temp'])#use to save the emolt data during start time and end time
+        for i in tele_df.index:  #loop every line in dataframe
+    
+            tele_time_str=str(tele_df['year'].iloc[i])+'-'+str(tele_df['month'].iloc[i])+'-'+str(tele_df['day'].iloc[i])+' '+str(tele_df['Hours'].iloc[i])+':'+str(tele_df['minates'].iloc[i])+':'+'00'# create the string of time
+            tele_time=datetime.strptime(tele_time_str,'%Y-%m-%d %H:%M:%S')  # covert the time string to the datetime.datetime
+            if start_time<=tele_time<end_time:  #judge the time whether during the start time and the end time
+                valuable_tele_df=valuable_tele_df.append(pd.DataFrame(data=[[tele_df['vessel_n'][i],tele_df['esn'][i],tele_time,tele_df['lon'][i],tele_df['lat'][i],\
+                                                                             tele_df['depth'][i],tele_df['rangedepth'][i],tele_df['timerange'][i],tele_df['temp'][i],tele_df['stdtemp'][i]]],\
+                                                                            columns=['vessel_n','esn','time','lon','lat','depth','rangedepth','timerange','temp','stdtemp']))  # storing worthy data
+        valuable_tele_df.index=range(len(valuable_tele_df))  #reindex
+        return valuable_tele_df
 def read_telemetrystatus(path_name):
     """read the telementry_status, then return the useful data
     input:
@@ -38,7 +54,8 @@ def read_telemetrystatus(path_name):
             data_line_number=i
             break
     #read the data about "telemetry_status.csv"
-    telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)  #read the data that we need lines
+    #telemetrystatus_df=pd.read_csv(path_name,nrows=data_line_number)  #read the data that we need lines
+    telemetrystatus_df=pd.read_csv(path_name)
     #rename the column name that write vessel name
     as_list=telemetrystatus_df.columns.tolist()  
     idex=as_list.index('vessel (use underscores)')
@@ -61,6 +78,20 @@ def read_telemetry(path):
         tele_df=pd.read_csv(path,sep='\s+',names=['vessel_n','esn','month','day','Hours','minates','fracyrday',\
                                           'lon','lat','dum1','dum2','depth','rangedepth','timerange','temp','stdtemp','year'])
         if int(tele_df['year'].iloc[-9])==int(datetime.now().year):   #If the year of the ninth line (starting from the end line) is not this year, the current data is being updated, it needs to wait 10 minutes and then reload.
+            break
+        print('read_telemetry redownload data')
+        time.sleep(600)  #wait 10 minutes
+    return tele_df
+
+def read_telemetryQC(path):
+    """read the emolt data and fix a standard format, the return the standard format data
+    input: 
+        path: the path of the emolt data"""
+    while True:
+        tele_df=pd.read_csv(path,sep=',')
+        
+        print (tele_df.iloc[-9])
+        if int(tele_df['datet'].iloc[-9][:4])==int(datetime.now().year):   #If the year of the ninth line (starting from the end line) is not this year, the current data is being updated, it needs to wait 10 minutes and then reload.
             break
         print('read_telemetry redownload data')
         time.sleep(600)  #wait 10 minutes

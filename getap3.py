@@ -41,26 +41,30 @@ def read_codes():
   f1=open(path1+inputfile1,'r')
   esn,id,depth,form=[],[],[],[]
   for line in f1:
-    esn.append(line.split()[0])
-    id.append(line.split()[1])
-    depth.append(line.split()[2])
-    form.append(line.split()[-1])
+    esn.append(line.split(',')[0])
+    id.append(line.split(',')[1])
+    depth.append(line.split(',')[2])
+    form.append(line.split(',')[-1])
   return esn,id,depth,form
   
 esn2,ide,depth,form=read_codes()
 #print (ide)
 #print esn2
 timenow=datetime.datetime.now()
+time_yesterday=datetime.datetime.now()-datetime.timedelta(days=1) #make sure we get data from 22:00-24:00,program runs every 2 hours
 mth=str(timenow.month).zfill(2)
 day=str(timenow.day).zfill(2)
 year=str(timenow.year).zfill(4)
+yes_mth=str(time_yesterday.month).zfill(2)
+yes_day=str(time_yesterday.day).zfill(2)
+yes_year=str(time_yesterday.year).zfill(4)
 #os.chdir('/home/jmanning/py/backup')
 os.chdir('/var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup')
 try:
     with pysftp.Connection('mapdata.assetlinkglobal.com', username='noaafisheries', password='TransientEddyFormations') as sftp:
         for fname in sftp.listdir('outgoing'):
             #print fname
-            if fname.startswith(year+mth+day):# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
+            if fname.startswith(year+mth+day) or fname.startswith(yes_year+yes_mth+yes_day) :# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
                 sftp.get('outgoing/'+fname)
 except:
     
@@ -69,7 +73,8 @@ except:
     sftp = paramiko.SFTPClient.from_transport(transport)
     for fname in sftp.listdir('outgoing'):
             #print fname
-            if fname.startswith(year+mth+day):# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
+            if fname.startswith(year+mth+day) or fname.startswith(yes_year+yes_mth+yes_day):# added day in Feb 2018 and changed from 2018 to 2019 on Jan 3, 2019
+            #if fname.startswith('202110') or fname.startswith('202109'):
                 sftp.get('outgoing/'+fname,'/var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup/'+fname)
 files=sorted(glob.glob('/var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup/*.json'))
 #files=sorted(glob.glob('/home/jmanning/py/backup/*.json'))
@@ -79,7 +84,7 @@ sftp.close()
 #f_output=open('/net/pubweb_html/drifter/emolt_ap3.dat','w')  
 #f_output2=open('/net/pubweb_html/drifter/emolt_ap3_reports.dat','w')
 f_output=open('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3.dat','w')  
-f_output2=open('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3_reports.dat','w')
+f_output2=open('/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3_reports.dat','a+')
 
 esn,date,lat,lon,battery,data_send,meandepth,rangedepth,timelen,meantemp,sdeviatemp=[],[],[],[],[],[],[],[],[],[],[],
 c=0
@@ -194,16 +199,18 @@ for i in files:
                              ie=ie+18 # added 5/28/2019 after having a 'eee' appear in the lat/lon part of the hex
                              meandepth=float(hex[ie-17:ie-14])
                              rangedepth=float(hex[ie-14:ie-11])
-                             if form[index_idn1]=='m':
+                             if 'm' in form[index_idn1]:
                                timelen=float(hex[ie-11:ie-8])/60.
                              else:
+                               #print (esn2[index_idn1])  
+                               #print (form[index_idn1])
                                timelen=float(hex[ie-11:ie-8]) 
                              meantemp=float(hex[ie-8:ie-4])/100
                              sdeviatemp=float(hex[ie-4:ie])/100
                           else:   
                             sdeviatemp=float(hex[st+14:st+18])/100
                             meantemp=float(hex[st+10:st+14])/100
-                            if form[index_idn1]=='m':
+                            if 'm' in  form[index_idn1]:
                               timelen=float(hex[st+7:st+10])/60.#minutes assumed in mobile gear case
                             else:
                               timelen=float(hex[st+7:st+10])#hours assumed in fixed gear case
@@ -280,8 +287,11 @@ os.system('cat /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3.dat >> /va
 #urllib.urlretrieve ("https://studentdrifters.org/posthuanxin/rock_emolt2.dat", "rock_emolt2.dat") # commented out on 9/4/2020 when bad data came through
 os.system('cat /var/www/vhosts/emolt.org/httpdocs/posthuanxin/rock_emolt2.dat | sort -uk2 | sort -nk1 | cut -f2- >> /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat | sort -uk2 | sort -nk1 | cut -f2-')
 os.system('cat -n /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat  | sort -uk2 | sort -nk1 | cut -f2- > /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt2.dat')
-os.system('cp /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt2.dat /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat')
-
+os.system('cp /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt2.dat /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat -u')
+#os.system('sort -u /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat')
+#os.system('cp /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt2.dat /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt.dat')
+os.system('mv /var/www/vhosts/emolt.org/huanxin_ftp/getap3/backup/* /var/www/vhosts/emolt.org/huanxin_ftp/getap3/saved/')
+os.system('sort -uo /var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_ap3_reports.dat{,}')
 #pipe2 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/home/jmanning/py/getlastfix.py'])
 #pipe3 = subprocess.Popen(['/home/jmanning/anaconda2/bin/python','/home/jmanning/py/qaqc_emolt.py'])
 # the following line creates the "emolt.xml" that is read by drifter/fishtemps.html googlemap

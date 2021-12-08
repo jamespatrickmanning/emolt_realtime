@@ -31,7 +31,7 @@ import doppio_modules
 #
 # HARDCODES:
 maxdiff=10. # maximum model error to report
-mindistfromharbor=0.4 # mimimum distance in miles from harbor to be considered real
+mindistfromharbor=0.2 # mimimum distance in miles from harbor to be considered real
 mindist_allowed=0.4 # minimum distance from nearest NGDC depth in km 
 
 # function to get vessel_name and probe serial number given vessel_number
@@ -75,7 +75,8 @@ def getclim(lat1,lon1,path,dtime,var='Bottom_Temperature/BT_'):
     return clim[idlon][idlat]
 
 def getvesselname(vessel_number):
-  df=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/codes_temp.dat',sep='\s+',header=None)
+  #df=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/codes_temp.dat',sep='\s+',header=None)
+  df=pd.read_csv('/var/www/vhosts/emolt.org/huanxin_ftp/codes_temp.dat',sep=',',header=None)
   vn=df[df[0]==vessel_number][3].values[0] #
   sn=df[df[0]==vessel_number][4].values[-1]# gets the last one
   form=df[df[0]==vessel_number][5].values[-1]# fixed or mobile as "f" or "m"
@@ -247,6 +248,7 @@ df_rock_daily=pd.read_csv('/var/www/vhosts/emolt.org/httpdocs/emoltdata/daily_em
 df_daily=df_emolt_daily.append(df_rock_daily)
 #df=pd.read_csv('https://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat',sep='\s+',header=None)           # assetlink results and assumes rockblock hauls already appended to AL by "getap3.py" 8/19/2020
 var='Bottom_Temperature/BT_'
+#print (df_daily)
 # create a datetime for all fixes
 datet=[]
 for k in range(len(df)): # for each fix
@@ -272,18 +274,20 @@ for j in range(len(ves)): # for each vessel
   ####
   if len(df1)>0:# note in some cases the vessel may have only reported temps from the dock
     [vn,sn,form]=getvesselname(ves[j])#gets vessel name, probe serial number, and fixed_or_mobile for this vessel number
-    print (vn)
+    #print ('vn is '+vn)
     last_wifi_date=getlastwifi(sn)# gets date of last wifi for this serieal number
     last_fishing_date=getlastfished(vn,mindistfromharbor,df_daily) 
+    #print ('last_fishing_date '+last_fishing_date)
+    
     obst=str(round(c2f(float(df1[14][-1:].values[0]))[0],1)) # last observation for this vessel
     #climt=str(round(c2f(getclim(df1[8][-1:].values[0],df1[7][-1:].values[0],str(int(max(df1.datet).to_pydatetime().strftime('%j')))))[0],1))# climatology for this day based on Melrose
     climt=str(round(c2f(getclim(df1[8][-1:].values[0],df1[7][-1:].values[0],'',max(df1.datet),var))[0],1))# climatology for this day based on Melrose
-    print ('looking for NGDC depth')
+    #print ('looking for NGDC depth')
     depth_ngdc=get_depth(df1[7][-1:].values[0],df1[8][-1:].values[0],mindist_allowed)# ngdc bottom depth estimate
     if abs(df1[11][-1:].values[0]-depth_ngdc)/depth_ngdc>0.15:# big difference in observed and NGDC depth
       obst=obst+'*'
     #get FVCOM
-    print ('looking for FVCOM')
+    #print ('looking for FVCOM')
     if max(df1.datet).to_pydatetime()>dt.now()-timedelta(days=3): # if within model forecast time period 
       try:
         # JiM modified the "str(round(" prefix on 7/8/2020
@@ -298,14 +302,14 @@ for j in range(len(ves)): # for each vessel
       modt='nan'
     # get DOPPIO
     if max(df1.datet).to_pydatetime()>=dt(2017,11,1,0,0,0):
-      print ('looking for DOPPIO')
+      #print ('looking for DOPPIO')
       try:
         #modt_doppio=str(round(c2f(doppio_modules.get_doppio(lat=df1[8][-1:].values[0],lon=df1[7][-1:].values[0],depth='bottom',time=max(df1.datet).to_pydatetime()-timedelta(days=4),fortype='temperature'))[0],1))
   
         modt_doppio=str(round(c2f(doppio_modules.get_doppio_Best(time=max(df1.datet).to_pydatetime()-timedelta(days=4),lat=df1[8][-1:].values[0],lon=df1[7][-1:].values[0],depth='bottom',fortype='temperature'))[0],1))
       except:
         modt_doppio=np.nan
-      print ('looking for GOMOFS')
+      #print ('looking for GOMOFS')
       try:
         modt_gomofs=str(round(c2f(gomofs_modules.get_gomofs(max(df1.datet).to_pydatetime()-timedelta(days=0),df1[8][-1:].values[0],df1[7][-1:].values[0],'bottom'))[0],1))
       except:
@@ -352,7 +356,9 @@ with warnings.catch_warnings():
     outfile.write('<br><br> Most recent mean observed minus DOPPIO forecast model = '+str(round(np.mean(moderror_doppio),1))+' degF')
     outfile.write('<br><br> Most recent mean observed minus GOMOFS forecast model = '+str(round(np.mean(moderror_gomofs),1))+' degF')
     outfile.write('<br><br> Note: Vessels highlighted in red may require some attention.')
-    outfile.write('<br><br> Note: To see a map of the last month of observations, click <a href=''http://emolt.org/telemetry.html''>here</a>.')
+    outfile.write("<br><br> Note: To see a map of the last month of observations, click <a href='http://emolt.org/telemetry.html'>here</a>.")
+    outfile.write("<br><br> Note: To see a map of the last week's of observations compared to climatology, click <a href='http://emolt.org/weekly.html'>here</a>.")
+    outfile.write("<br><br> Note: To see raw data uploaded in last Two hours , click <a href='http://emolt.org/raw_last.html'>here</a>.")
     outfile.close()
     os.system('cp /var/www/vhosts/emolt.org/httpdocs/lastfix_temp.html /var/www/vhosts/emolt.org/httpdocs/lastfix.html')# changed from "mv" to "cp" on 4/9/2019
     #os.system('cp /net/newfish_www/html/nefsc/emolt/lastfix_temp.html /net/newfish_www/html/nefsc/emolt/lastfix.html')# changed from "mv" to "cp" on 4/9/2019

@@ -431,8 +431,10 @@ def main():
     htmlpath='/var/www/vhosts/emolt.org/httpdocs/'
     #HARDCODES
     #download telemetry.csv file
-    os.system("wget -O '/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv' 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTW0CxH3sBjQC8H3SltRVwtLXsXHA7gyBzEUjiZSm57WF3POEHifIh-4TO--97uQlmRYGSv-BwOjoNC/pub?gid=1507135250&single=true&output=csv'")
+    os.system("wget -O '/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv' 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTW0CxH3sBjQC8H3SltRVwtLXsXHA7gyBzEUjiZSm57WF3POEHifIh-4TO--97uQlmRYGSv-BwOjoNC/pub?gid=854187370&single=true&output=csv'")
     telemetrystatus_file='/var/www/vhosts/emolt.org/httpdocs/emoltdata/telemetry_status.csv'
+    #download codes_temp for other programs use
+    os.system("wget -O '/var/www/vhosts/emolt.org/huanxin_ftp/codes_temp.dat' 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDYRGnLWvMLLCQC3xR2M8HPQJAJ6UQEtTjJONAOn2rHvsHSc8RkqER296OhrBf2TB0Q7EyS_pTlIiM/pub?gid=0&single=true&output=csv'")
     dictionaryfile='/var/www/vhosts/emolt.org/httpdocs/emoltdata/dictionary.json' # dictionary with endtime,doppio,gomofs,fvcom where each model has vesselname,lat,lon,time,temp
 
     ##############################
@@ -452,7 +454,7 @@ def main():
     #emolt='http://www.nefsc.noaa.gov/drifter/emolt.dat' # this is the output of combining getap2s.py and getap3.py
     #emolt='http://apps-nefsc.fisheries.noaa.gov/drifter/emolt.dat' # this is the output of combining getap2s.py and getap3.py
     #emolt='emolt.dat'
-    emolt='/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed_telemetry_and_wified.csv'
+    emolt='/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_no_telemetry.csv'
     
     emolt_df_wifi=rf.screen_emolt(start_time=starttime,end_time=endtime,path=emolt)#get emolt data 
     emolt='/var/www/vhosts/emolt.org/httpdocs/emoltdata/emolt_QCed_good.csv'

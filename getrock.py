@@ -48,14 +48,14 @@ def read_codes():
   f1=open(path1+inputfile1,'r')
   esn,id,depth,form,vessel_names=[],[],[],[],[]
   for line in f1:
-    esn.append(line.split()[0])
-    id.append(line.split()[1])
-    depth.append(line.split()[2])
-    vessel_names.append(line.split()[3])
-    form.append(line.split()[-1])
+    esn.append(line.split(',')[0])
+    id.append(line.split(',')[1])
+    depth.append(line.split(',')[2])
+    vessel_names.append(line.split(',')[3])
+    form.append(line.split(',')[-1])
   return esn,id,depth,vessel_names,form
 ################################################
-link='https://studentdrifters.org/posthuanxin/rockemolt.dat' # here is the address where you download rockblock data
+#link='https://emolt.org/posthuanxin/rockemolt.dat' # here is the address where you download rockblock data
 #f_output=open('ap3_'+  str(datetime.datetime.now())[:16]+'.dat','w') #open a ouput file,change paths if needed
 f_output=open('/var/www/vhosts/emolt.org/httpdocs/posthuanxin/rock_emolt.dat','w')
 daily_output=open('/var/www/vhosts/emolt.org/httpdocs/emoltdata/daily_emolt.dat','w')
@@ -69,69 +69,83 @@ rockdata=[]
 
 #from urllib.request import urlopen
 #f = urlopen(link)
-f=open('/var/www/vhosts/studentdrifters.org/httpdocs/posthuanxin/rockemolt.dat','r')
+f=open('/var/www/vhosts/emolt.org/httpdocs/posthuanxin/rockemolt.dat','r')
 myfile = f.read()
 #print(myfile)
 lines=myfile.splitlines()# put everyling into a list
 datas,esn,transmit_time=[],[],[]
 
 for i in range(len(lines)):
-	try:
-		#print (len(lines[i]))
-		lat1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[0])
-		datas1=bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode()
-		esn1=str(lines[i]).split('imei=')[1].split('&')[0]
-		transmit_time1=str(lines[i]).split('transmit_time=')[1].split('&iridium')[0]
-		dates1=transmit_time1[0:8]+transmit_time1[11:13]+transmit_time1[16:18]+transmit_time1[21:23]
-		
-		lon1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[1])
-		meandepth1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][0:3]) 
-		rangedepth1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][3:6])
-		timelen1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][6:9])
-		meantemp1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][9:13])/100
-		sdeviatemp1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][13:17])/100
-		
-		date_time1=datetime.datetime.strptime(dates1,"%y-%m-%d%H%M%S" )
-		year1=str(date_time1.year)
-		month1=str(date_time1.month)
-		day1=str(date_time1.day)
-		hour1=str(date_time1.hour)
-		minute1=str(date_time1.minute)
-		second1=str(date_time1.second)
-		yearday1=int(date_time1.strftime('%j'))+date_time1.hour/24+date_time1.minute/24./60. # get yearday
-		#print (dates1)
-		
-		lat.append(lat1)
-		datas.append(datas1) # format byte data to string and add to "datas" list
-		esn.append(esn1)
-		transmit_time.append(transmit_time1)
+    try:
+            #print(lines[i])
+            lat1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[0])
+            datas1=bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode()
+            esn1=str(lines[i]).split('imei=')[1].split('&')[0]
+            transmit_time1=str(lines[i]).split('transmit_time=')[1].split('&iridium')[0]
+            dates1=transmit_time1[0:8]+transmit_time1[11:13]+transmit_time1[16:18]+transmit_time1[21:23]
+            index_idn1=(np.where(esn1[-6:]==np.array(ide)))[0][0]
+            form1=form[index_idn1]
+            #print (form1)
+            lon1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[1])
+            meandepth1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][0:3]) 
+            rangedepth1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][3:6])
+            #print ('2')
+            if 'm' in form[index_idn1]:
+                timelen1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][6:9])/60
+                #print (1)
+            else:
+                timelen1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][6:9])
+            meantemp1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][9:13])/100
+            sdeviatemp1=float(bytearray.fromhex(str(lines[i]).split('data=')[1].split("'")[0]).decode().split(',')[2][13:17])/100
+    		
+            date_time1=datetime.datetime.strptime(dates1,"%y-%m-%d%H%M%S" )
+            year1=str(date_time1.year)
+            month1=str(date_time1.month)
+            day1=str(date_time1.day)
+            hour1=str(date_time1.hour)
+            minute1=str(date_time1.minute)
+            second1=str(date_time1.second)
+            yearday1=int(date_time1.strftime('%j'))+date_time1.hour/24+date_time1.minute/24./60. # get yearday
+    		#print (dates1)
+    		
+            lat.append(lat1)
+            datas.append(datas1) # format byte data to string and add to "datas" list
+            esn.append(esn1)
+            transmit_time.append(transmit_time1)
+    
+    
+            lon.append(lon1)
+            meandepth.append(meandepth1)   
+            rangedepth.append(rangedepth1)
+            timelen.append(timelen1)
+            meantemp.append(meantemp1)
+            sdeviatemp.append(sdeviatemp1)
+            dates.append(dates1)
+            date_time.append(date_time1)
+            year.append(str(date_time1.year))
+            month.append(str(date_time1.month))
+            day.append(str(date_time1.day))
+            hour.append(str(date_time1.hour))
+            minute.append(str(date_time1.minute))
+            second.append(str(date_time1.second))
+            yearday.append(int(date_time1.strftime('%j'))+date_time1.hour/24+date_time1.minute/24./60.) # get yearday
+    		
+    except:        
+        if datas1.split(',')[-1][-4:]=='0000':
+            try:
+                
+                index_idn1=(np.where(esn1[-6:]==np.array(ide)))[0][0]
+            except:
+                print (datas1)
+                print ('please update codes_temp.dat')
+                break
+            vessel_name=vessel_names[index_idn1]
+            daily_output.write(str(vessel_name).rjust(10)+" "+str(datetime.datetime.strftime(date_time1, "%Y-%m-%d %H:%M:%S")).rjust(20)+' '+("%10.5f") %(lat1%100/60+int(lat1/100))+' '+("%10.5f") %-(lon1%100/60+int(lon1/100))+"\n")
+        else:
+            continue
+            
 
 
-		lon.append(lon1)
-		meandepth.append(meandepth1)   
-		rangedepth.append(rangedepth1)
-		timelen.append(timelen1)
-		meantemp.append(meantemp1)
-		sdeviatemp.append(sdeviatemp1)
-		
-		dates.append(dates1)
-		date_time.append(date_time1)
-		year.append(str(date_time1.year))
-		month.append(str(date_time1.month))
-		day.append(str(date_time1.day))
-		hour.append(str(date_time1.hour))
-		minute.append(str(date_time1.minute))
-		second.append(str(date_time1.second))
-		yearday.append(int(date_time1.strftime('%j'))+date_time1.hour/24+date_time1.minute/24./60.) # get yearday
-		
-	except:
-		if datas1.split(',')[-1][-4:]=='0000':
-			#print (esn1)
-			index_idn1=(np.where(esn1[-6:]==np.array(ide)))[0][0]
-			vessel_name=vessel_names[index_idn1]
-			daily_output.write(str(vessel_name).rjust(10)+" "+str(datetime.datetime.strftime(date_time1, "%Y-%m-%d %H:%M:%S")).rjust(20)+' '+("%10.5f") %(lat1%100/60+int(lat1/100))+' '+("%10.5f") %-(lon1%100/60+int(lon1/100))+"\n")
-		else:
-			continue
 			
 			
 

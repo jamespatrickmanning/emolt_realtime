@@ -531,6 +531,9 @@ def get_gomofs_url(date):
     url='https://prod.opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/GOMOFS/MODELS/'\
         +date_str[:4]+'/'+date_str[4:6]+'/'+date_str[6:8]+'/nos.gomofs.fields.'+\
         nstr+'.'+date_str[:8]+'.'+tstr+'.nc'
+    #url='https://opendap.co-ops.nos.noaa.gov/thredds/dodsC/NOAA/GOMOFS/MODELS/'\
+    #    +date_str[:4]+'/'+date_str[4:6]+'/'+date_str[6:8]+'/nos.gomofs.fields.'+\
+    #    nstr+'.'+date_str[:8]+'.'+tstr+'.nc'        
     return url
 
 def get_gomofs_url_new(date):
@@ -615,10 +618,13 @@ def get_gomofs(date_time,lat,lon,depth='bottom',mindistance=20):# JiM's simple v
         print('forecast time under 3 days')
         return np.nan
     #start download data
+    print ('start download data')
     if (datetime.datetime.utcnow()-date_time)<datetime.timedelta(days=25):
         url=get_gomofs_url(date_time)#this url get data within 25 days recently
+        #print ("url not use new")
     else:
         url=get_gomofs_url_new(date_time)#this url get data 25 days ago
+        #print ("url use new")
     nc=netCDF4.Dataset(str(url))
     gomofs_lons=nc.variables['lon_rho'][:]
     gomofs_lats=nc.variables['lat_rho'][:]

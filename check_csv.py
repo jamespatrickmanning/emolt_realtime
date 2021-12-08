@@ -253,7 +253,7 @@ def check_reformat_data(indir,outdir,startt,endt,pstatus,lack_data,rdnf,LSN2='7a
         time_gmt=datetime.strptime(time_str,"%Y%m%d %H%M%S")
         #time_local=zl.utc2local(time_gmt)#UTC time to local time
         if file[len(file)-4:]=='.csv':
-            if startt<=time_gmt<=endt:
+            #if startt<=time_gmt<=endt: # comment this lane if not too many raw csv files need to process
                 file_lists.append(file)
                 
     #start check the data and save in the output_dir
@@ -430,7 +430,7 @@ def main():
     ###########################
     end_time=datetime.utcnow()
     #start_time,end_time=week_start_end(end_time,interval=1)
-    start_time=end_time-timedelta(weeks=12)
+    start_time=end_time-timedelta(weeks=12) # not process this lane actually
     #download raw data from website
     #files=ftpdownload.download(localpath='C:\\Weekly_Project\\Weekly_Project\\programe\\raw_data_match\\result\\Matdata', ftppath='/Matdata')
     
